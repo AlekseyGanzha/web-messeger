@@ -1,0 +1,9 @@
+node_modules
+.next
+dist
+build
+uploads
+server/uploads
+package-lock.json
+server/prisma/migrations
+*.d.ts

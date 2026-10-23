@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface: 255 255 255;
+  --panel: 249 250 251;
+  --hover: 249 250 251;
+  --elevated: 243 244 246;
+  --line: 229 231 235;
+  --fg: 17 24 39;
+  --muted: 107 114 128;
+  --danger: 239 68 68;
+  --success: 22 163 74;
+  color-scheme: light;
+}
+
+.dark {
+  --surface: 31 41 55;
+  --panel: 17 24 39;
+  --hover: 31 41 55;
+  --elevated: 55 65 81;
+  --line: 55 65 81;
+  --fg: 249 250 251;
+  --muted: 156 163 175;
+  --danger: 248 113 113;
+  --success: 74 222 128;
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-panel text-fg;
+}

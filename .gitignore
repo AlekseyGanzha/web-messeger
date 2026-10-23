@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.next/
+build/
+uploads/
+server/uploads/
+.env
+.env.local
+*.log
+*.tsbuildinfo
+.eslintcache
+coverage/
+.DS_Store
