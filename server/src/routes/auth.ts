@@ -59,12 +59,7 @@ router.post(
       expiresIn: "7d",
     });
 
-    const updated = await prisma.user.update({
-      where: { id: user.id },
-      data: { isOnline: true, lastSeenAt: null },
-    });
-
-    return res.json({ token, user: toAuthUser(updated) });
+    return res.json({ token, user: toAuthUser(user) });
   }),
 );
 
@@ -85,7 +80,7 @@ router.post(
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { username, passwordHash, displayName, isOnline: true },
+      data: { username, passwordHash, displayName },
     });
 
     const token = jwt.sign({ userId: user.id, username: user.username }, config.jwtSecret, {

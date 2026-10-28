@@ -2,13 +2,18 @@
 
 import { useState } from "react";
 import { useChatStore } from "@/entities/chat";
+import { usePresenceStore, useUserStore } from "@/entities/user";
 import { api, ApiError } from "@/shared/api";
-import { Button, Input } from "@/shared/ui";
+import { Avatar, Button, Input } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
+import { formatLastSeen } from "@/shared/lib/format-last-seen";
+import { useNow } from "@/shared/lib/use-now";
 import type { Chat } from "@web-messager/shared";
 
 export function ChatList() {
   const { chats, activeChatId, setActiveChat, addChat } = useChatStore();
+  const meId = useUserStore((s) => s.me?.id);
+  const now = useNow();
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,34 +61,73 @@ export function ChatList() {
       ) : (
         <ul className="flex-1 divide-y divide-line overflow-y-auto">
           {chats.map((chat) => (
-            <li key={chat.id}>
-              <button
-                onClick={() => setActiveChat(chat.id)}
-                className={cn(
-                  "flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-hover",
-                  activeChatId === chat.id && "bg-elevated",
-                )}
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white">
-                  {chat.isGroup ? "#" : (chat.name?.[0] ?? "?")}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {chat.isGroup ? `Группа: ${chat.name ?? "без названия"}` : chat.name}
-                  </p>
-                  <p className="truncate text-xs text-muted">
-                    {chat.lastMessage
-                      ? chat.lastMessage.text || (chat.lastMessage.imageUrl ? "Изображение" : "")
-                      : chat.members.filter((m) => m.isOnline).length > 0
-                        ? "в сети"
-                        : "не в сети"}
-                  </p>
-                </div>
-              </button>
-            </li>
+            <ChatListItem
+              key={chat.id}
+              chat={chat}
+              meId={meId}
+              now={now}
+              active={activeChatId === chat.id}
+              onSelect={() => setActiveChat(chat.id)}
+            />
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+interface ChatListItemProps {
+  chat: Chat;
+  meId?: string;
+  now: Date;
+  active: boolean;
+  onSelect: () => void;
+}
+
+function ChatListItem({ chat, meId, now, active, onSelect }: ChatListItemProps) {
+  const other = chat.isGroup ? null : chat.members.find((m) => m.id !== meId);
+  const presence = usePresenceStore((s) => (other ? s.byUserId[other.id] : undefined));
+  const isOnline = presence?.isOnline ?? other?.isOnline ?? false;
+  const lastSeenAt = presence?.lastSeenAt ?? other?.lastSeenAt ?? null;
+
+  const title = chat.isGroup
+    ? `Группа: ${chat.name ?? "без названия"}`
+    : (chat.name ?? other?.displayName ?? "Чат");
+
+  const subtitle = chat.lastMessage
+    ? chat.lastMessage.text || (chat.lastMessage.imageUrl ? "Изображение" : "")
+    : chat.isGroup
+      ? "Нет сообщений"
+      : isOnline
+        ? "в сети"
+        : formatLastSeen(lastSeenAt, now);
+
+  return (
+    <li>
+      <button
+        onClick={onSelect}
+        className={cn(
+          "flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-hover",
+          active && "bg-elevated",
+        )}
+      >
+        <Avatar
+          name={chat.isGroup ? "#" : (other?.displayName ?? chat.name ?? "?")}
+          src={other?.avatarUrl}
+          isOnline={chat.isGroup ? undefined : isOnline}
+        />
+        <div className="min-w-0">
+          <p className="truncate font-medium">{title}</p>
+          <p
+            className={cn(
+              "truncate text-xs",
+              !chat.lastMessage && isOnline ? "text-success" : "text-muted",
+            )}
+          >
+            {subtitle}
+          </p>
+        </div>
+      </button>
+    </li>
   );
 }

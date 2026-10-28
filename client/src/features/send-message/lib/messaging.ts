@@ -2,6 +2,7 @@ import type { Message, Chat } from "@web-messager/shared";
 import { api, connectSocket } from "@/shared/api";
 import { useMessageStore } from "@/entities/message";
 import { useChatStore } from "@/entities/chat";
+import { getSocket } from "@/shared/api";
 
 export function sendMessage(chatId: string, text: string): void {
   const trimmed = text.trim();
@@ -36,7 +37,7 @@ export function sendImageMessage(chatId: string, image: UploadedImage, text: str
 }
 
 export function subscribeToMessages(): () => void {
-  const socket = connectSocket();
+  const socket = getSocket();
   const onMessage = (message: Message) => {
     useMessageStore.getState().addMessage(message);
     useChatStore.getState().touchChat(message);

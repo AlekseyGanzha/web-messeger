@@ -65,6 +65,12 @@ export interface UpdateProfileDto {
   avatarUrl?: string | null;
 }
 
+export interface PresenceUpdate {
+  userId: string;
+  isOnline: boolean;
+  lastSeenAt: string | null;
+}
+
 export type ClientToServerEvents = {
   "message:send": (payload: {
     chatId: string;
@@ -83,6 +89,6 @@ export type ServerToClientEvents = {
   "message:new": (message: Message) => void;
   "chat:new": (chat: Chat) => void;
   "typing:update": (payload: { chatId: string; userId: string; isTyping: boolean }) => void;
-  "user:online": (payload: { userId: string }) => void;
-  "user:offline": (payload: { userId: string }) => void;
+  "presence:update": (payload: PresenceUpdate) => void;
+  "presence:snapshot": (payload: PresenceUpdate[]) => void;
 };

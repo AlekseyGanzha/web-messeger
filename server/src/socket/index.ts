@@ -4,6 +4,13 @@ import { config } from "../config/env.js";
 import { prisma } from "../db/prisma.js";
 import { createMessage } from "../services/message.service.js";
 import { isUploadedImageUrl } from "../services/upload.service.js";
+import {
+  addUserSocket,
+  markOffline,
+  markOnline,
+  removeUserSocket,
+  sendPresenceSnapshot,
+} from "./presence.js";
 import type { ClientToServerEvents, ServerToClientEvents } from "@web-messager/shared";
 
 type SocketData = { userId: string; username: string };
@@ -17,36 +24,39 @@ export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvent
     }
 
     try {
-      const payload = jwt.verify(token, config.jwtSecret) as { userId: string; username: string };
+      const payload = jwt.verify(token, config.jwtSecret) as SocketData;
       (socket.data as SocketData).userId = payload.userId;
-      socket.data.username = payload.username;
+      (socket.data as SocketData).username = payload.username;
       next();
     } catch {
       next(new Error("Invalid token"));
     }
   });
 
-  io.on("connection", async (socket) => {
+  io.on("connection", (socket) => {
     const { userId } = socket.data as SocketData;
 
-    try {
-      const userChats = await prisma.chatMember.findMany({
+    void (async () => {
+      socket.join(`user:${userId}`);
+
+      const becameOnline = addUserSocket(userId, socket.id);
+      if (becameOnline) {
+        await markOnline(io, userId);
+      }
+
+      const memberships = await prisma.chatMember.findMany({
         where: { userId },
         select: { chatId: true },
       });
 
-      userChats.forEach((m) => socket.join(m.chatId));
+      if (memberships.length > 0) {
+        socket.join(memberships.map((m) => m.chatId));
+      }
 
-      await prisma.user.update({
-        where: { id: userId },
-        data: { isOnline: true, lastSeenAt: null },
-      });
-    } catch (error) {
+      await sendPresenceSnapshot(io, socket.id, userId);
+    })().catch((error) => {
       console.error("Socket connection setup failed:", error);
-    }
-
-    socket.join(`user:${userId}`);
-    socket.broadcast.emit("user:online", { userId });
+    });
 
     socket.on("chat:join", (chatId) => {
       socket.join(chatId);
@@ -87,16 +97,15 @@ export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvent
       socket.to(chatId).emit("typing:update", { chatId, userId, isTyping: false });
     });
 
-    socket.on("disconnect", async () => {
-      try {
-        await prisma.user.update({
-          where: { id: userId },
-          data: { isOnline: false, lastSeenAt: new Date() },
-        });
-        socket.broadcast.emit("user:offline", { userId });
-      } catch (error) {
+    socket.on("disconnect", () => {
+      void (async () => {
+        const becameOffline = removeUserSocket(userId, socket.id);
+        if (becameOffline) {
+          await markOffline(io, userId);
+        }
+      })().catch((error) => {
         console.error("disconnect handler failed:", error);
-      }
+      });
     });
   });
 }

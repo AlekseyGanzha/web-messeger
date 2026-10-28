@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "@/entities/chat";
 import { useMessageStore, MessageItem } from "@/entities/message";
-import { useUserStore } from "@/entities/user";
+import { useUserStore, usePresenceStore } from "@/entities/user";
 import { sendMessage, sendImageMessage, uploadImage } from "@/features/send-message";
 import { api, ApiError } from "@/shared/api";
-import { Button, Input } from "@/shared/ui";
+import { Avatar, Button, Input } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
+import { formatLastSeen } from "@/shared/lib/format-last-seen";
+import { useNow } from "@/shared/lib/use-now";
 import type { Message } from "@web-messager/shared";
 
 const EMPTY_MESSAGES: Message[] = [];
@@ -26,6 +28,11 @@ export function ChatWindow() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const chat = chats.find((c) => c.id === activeChatId);
+
+  const other = chat && !chat.isGroup ? chat.members.find((m) => m.id !== me?.id) : null;
+  const presence = usePresenceStore((s) => (other ? s.byUserId[other.id] : undefined));
+  const isOnline = presence?.isOnline ?? other?.isOnline ?? false;
+  const now = useNow();
 
   useEffect(() => {
     if (!activeChatId) return;
@@ -101,10 +108,19 @@ export function ChatWindow() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-line bg-surface px-4 py-3 font-medium">
-        {chat.isGroup ? `Группа: ${chat.name ?? "без названия"}` : chat.name}
+      <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
+        {other && <Avatar name={other.displayName} src={other.avatarUrl} isOnline={isOnline} />}
+        <div className="min-w-0">
+          <p className="truncate font-medium">
+            {chat.isGroup ? `Группа: ${chat.name ?? "без названия"}` : chat.name}
+          </p>
+          {!chat.isGroup && other && (
+            <p className={cn("text-xs", isOnline ? "text-success" : "text-muted")}>
+              {isOnline ? "в сети" : formatLastSeen(presence?.lastSeenAt ?? other.lastSeenAt, now)}
+            </p>
+          )}
+        </div>
       </header>
-
       <div
         onDragOver={(e) => {
           e.preventDefault();

@@ -9,6 +9,7 @@ import { usersRouter } from "./routes/users.js";
 import { chatsRouter } from "./routes/chats.js";
 import { messagesRouter } from "./routes/messages.js";
 import { uploadsRouter } from "./routes/uploads.js";
+import { markAllOffline } from "./socket/presence.js";
 import { setupSocket } from "./socket/index.js";
 import { UnsupportedFileTypeError, ensureUploadsDir } from "./services/upload.service.js";
 
@@ -75,6 +76,30 @@ app.use(
   },
 );
 
-server.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
-});
+async function start() {
+  await markAllOffline();
+  server.listen(config.port, () => {
+    console.log(`Server running on port ${config.port}`);
+  });
+}
+
+let shuttingDown = false;
+
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  try {
+    await markAllOffline();
+  } catch (error) {
+    console.error("Failed to mark users offline:", error);
+  } finally {
+    io.close();
+    process.exit(0);
+  }
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
+void start();

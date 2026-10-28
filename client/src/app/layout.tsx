@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { THEME_SCRIPT } from "@/shared/lib/theme";
+import { SocketProvider } from "@/widgets/socket-provider";
 
 export const metadata: Metadata = {
   title: "Web Messager",
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <SocketProvider>{children}</SocketProvider>
+      </body>
     </html>
   );
 }
