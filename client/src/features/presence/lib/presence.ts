@@ -1,9 +1,9 @@
 import type { PresenceUpdate } from "@web-messager/shared";
-import { getSocket } from "@/shared/api";
+import { connectSocket } from "@/shared/api";
 import { usePresenceStore } from "@/entities/user";
 
 export function subscribeToPresence(): () => void {
-  const socket = getSocket();
+  const socket = connectSocket();
 
   const onUpdate = (presence: PresenceUpdate) => {
     usePresenceStore.getState().setPresence(presence);

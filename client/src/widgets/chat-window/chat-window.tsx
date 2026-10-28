@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "@/entities/chat";
 import { useMessageStore, MessageItem } from "@/entities/message";
-import { useUserStore, usePresenceStore } from "@/entities/user";
+import { usePresenceStore, useUserStore } from "@/entities/user";
 import { sendMessage, sendImageMessage, uploadImage } from "@/features/send-message";
 import { api, ApiError } from "@/shared/api";
 import { Avatar, Button, Input } from "@/shared/ui";
@@ -32,6 +32,11 @@ export function ChatWindow() {
   const other = chat && !chat.isGroup ? chat.members.find((m) => m.id !== me?.id) : null;
   const presence = usePresenceStore((s) => (other ? s.byUserId[other.id] : undefined));
   const isOnline = presence?.isOnline ?? other?.isOnline ?? false;
+  const groupOnlineCount = usePresenceStore((s) =>
+    chat?.isGroup
+      ? chat.members.filter((member) => s.byUserId[member.id]?.isOnline ?? member.isOnline).length
+      : 0,
+  );
   const now = useNow();
 
   useEffect(() => {
@@ -109,15 +114,28 @@ export function ChatWindow() {
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
-        {other && <Avatar name={other.displayName} src={other.avatarUrl} isOnline={isOnline} />}
+        {chat.isGroup ? (
+          <Avatar name="#" />
+        ) : (
+          other && <Avatar name={other.displayName} src={other.avatarUrl} isOnline={isOnline} />
+        )}
         <div className="min-w-0">
           <p className="truncate font-medium">
-            {chat.isGroup ? `Группа: ${chat.name ?? "без названия"}` : chat.name}
+            {chat.isGroup ? (chat.name ?? "Без названия") : chat.name}
           </p>
-          {!chat.isGroup && other && (
-            <p className={cn("text-xs", isOnline ? "text-success" : "text-muted")}>
-              {isOnline ? "в сети" : formatLastSeen(presence?.lastSeenAt ?? other.lastSeenAt, now)}
+          {chat.isGroup ? (
+            <p className="text-xs text-muted">
+              Участников: {chat.members.length}
+              {groupOnlineCount > 0 ? ` • ${groupOnlineCount} в сети` : ""}
             </p>
+          ) : (
+            other && (
+              <p className={cn("text-xs", isOnline ? "text-success" : "text-muted")}>
+                {isOnline
+                  ? "в сети"
+                  : formatLastSeen(presence?.lastSeenAt ?? other.lastSeenAt, now)}
+              </p>
+            )
           )}
         </div>
       </header>
@@ -137,9 +155,20 @@ export function ChatWindow() {
           dragOver && "bg-primary/5 outline-dashed outline-2 outline-primary",
         )}
       >
-        {messages.map((m) => (
-          <MessageItem key={m.id} message={m} isMine={m.senderId === me?.id} />
-        ))}
+        {messages.map((m) => {
+          const sender = chat.isGroup
+            ? chat.members.find((member) => member.id === m.senderId)
+            : undefined;
+
+          return (
+            <MessageItem
+              key={m.id}
+              message={m}
+              isMine={m.senderId === me?.id}
+              senderName={sender?.displayName}
+            />
+          );
+        })}
       </div>
 
       <form

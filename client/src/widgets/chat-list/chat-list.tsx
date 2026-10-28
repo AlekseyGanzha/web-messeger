@@ -8,6 +8,7 @@ import { Avatar, Button, Input } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import { formatLastSeen } from "@/shared/lib/format-last-seen";
 import { useNow } from "@/shared/lib/use-now";
+import { CreateGroupDialog } from "@/widgets/create-group-dialog";
 import type { Chat } from "@web-messager/shared";
 
 export function ChatList() {
@@ -17,6 +18,7 @@ export function ChatList() {
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -42,8 +44,8 @@ export function ChatList() {
 
   return (
     <div className="flex h-full flex-col">
-      <form onSubmit={handleCreate} className="flex flex-col gap-2 border-b border-line p-3">
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-2 border-b border-line p-3">
+        <form onSubmit={handleCreate} className="flex gap-2">
           <Input
             placeholder="Логин собеседника"
             value={username}
@@ -52,9 +54,12 @@ export function ChatList() {
           <Button type="submit" disabled={loading || !username.trim()}>
             +
           </Button>
-        </div>
+        </form>
         {error && <p className="text-xs text-danger">{error}</p>}
-      </form>
+        <Button type="button" variant="secondary" size="sm" onClick={() => setGroupOpen(true)}>
+          Создать группу
+        </Button>
+      </div>
 
       {chats.length === 0 ? (
         <p className="p-4 text-sm text-muted">Чатов пока нет</p>
@@ -72,6 +77,15 @@ export function ChatList() {
           ))}
         </ul>
       )}
+
+      <CreateGroupDialog
+        open={groupOpen}
+        onClose={() => setGroupOpen(false)}
+        onCreated={(chat) => {
+          addChat(chat);
+          setActiveChat(chat.id);
+        }}
+      />
     </div>
   );
 }
@@ -85,19 +99,19 @@ interface ChatListItemProps {
 }
 
 function ChatListItem({ chat, meId, now, active, onSelect }: ChatListItemProps) {
-  const other = chat.isGroup ? null : chat.members.find((m) => m.id !== meId);
+  const other = chat.isGroup ? null : chat.members.find((member) => member.id !== meId);
   const presence = usePresenceStore((s) => (other ? s.byUserId[other.id] : undefined));
   const isOnline = presence?.isOnline ?? other?.isOnline ?? false;
   const lastSeenAt = presence?.lastSeenAt ?? other?.lastSeenAt ?? null;
 
   const title = chat.isGroup
-    ? `Группа: ${chat.name ?? "без названия"}`
+    ? (chat.name ?? "Без названия")
     : (chat.name ?? other?.displayName ?? "Чат");
 
   const subtitle = chat.lastMessage
     ? chat.lastMessage.text || (chat.lastMessage.imageUrl ? "Изображение" : "")
     : chat.isGroup
-      ? "Нет сообщений"
+      ? `Участников: ${chat.members.length}`
       : isOnline
         ? "в сети"
         : formatLastSeen(lastSeenAt, now);
@@ -121,7 +135,7 @@ function ChatListItem({ chat, meId, now, active, onSelect }: ChatListItemProps) 
           <p
             className={cn(
               "truncate text-xs",
-              !chat.lastMessage && isOnline ? "text-success" : "text-muted",
+              !chat.lastMessage && !chat.isGroup && isOnline ? "text-success" : "text-muted",
             )}
           >
             {subtitle}

@@ -4,10 +4,12 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChatList } from "@/widgets/chat-list";
 import { ChatWindow } from "@/widgets/chat-window";
-import { api } from "@/shared/api";
+import { api, connectSocket, disconnectSocket } from "@/shared/api";
 import { apiConfig } from "@/shared/config";
 import { useChatStore } from "@/entities/chat";
-import { useUserStore, usePresenceStore } from "@/entities/user";
+import { usePresenceStore, useUserStore } from "@/entities/user";
+import { subscribeToMessages } from "@/features/send-message";
+import { subscribeToPresence } from "@/features/presence";
 import { AppHeader } from "@/widgets/app-header";
 import type { Chat, User } from "@web-messager/shared";
 
@@ -29,7 +31,6 @@ export default function ChatPage() {
         if (cancelled) return;
         useUserStore.getState().setMe(me);
         useChatStore.getState().setChats(chats);
-        usePresenceStore.getState().hydrate([me, ...chats.flatMap((chat) => chat.members)]);
       } catch {
         if (cancelled) return;
         localStorage.removeItem(apiConfig.TOKEN_KEY);
@@ -37,10 +38,19 @@ export default function ChatPage() {
       }
     })();
 
+    const unsubscribeMessages = subscribeToMessages();
+    const unsubscribePresence = subscribeToPresence();
+    connectSocket();
+
     return () => {
       cancelled = true;
+      unsubscribeMessages();
+      unsubscribePresence();
+      disconnectSocket();
       useChatStore.getState().setChats([]);
       useChatStore.getState().setActiveChat(null);
+      usePresenceStore.getState().reset();
+      useUserStore.getState().setMe(null);
     };
   }, [router]);
 

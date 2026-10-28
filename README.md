@@ -80,7 +80,7 @@ web-messager/
 
 **Поток данных:** клиент авторизуется через REST → получает JWT → подключает Socket.IO с токеном
 в `auth` → сервер валидирует токен, подписывает сокет на чаты пользователя и рассылает события
-`message:new`, `chat:new`, `typing:update`, `presence:update`, `presence:snapshot`. История сообщений и список
+`message:new`, `chat:new`, `typing:update`, `user:online/offline`. История сообщений и список
 чатов загружаются по REST при входе на страницу.
 
 ## Быстрый старт
@@ -172,13 +172,13 @@ npm run dev            # клиент на :3000, сервер на :3001
 
 События **сервер → клиент**:
 
-| Событие             | Payload                            |
-| ------------------- | ---------------------------------- |
-| `message:new`       | `Message`                          |
-| `chat:new`          | `Chat`                             |
-| `typing:update`     | `{ chatId, userId, isTyping }`     |
-| `presence:update`   | `{ userId, isOnline, lastSeenAt }` |
-| `presence:snapshot` | `PresenceUpdate[]`                 |
+| Событие         | Payload                        |
+| --------------- | ------------------------------ |
+| `message:new`   | `Message`                      |
+| `chat:new`      | `Chat`                         |
+| `typing:update` | `{ chatId, userId, isTyping }` |
+| `user:online`   | `{ userId }`                   |
+| `user:offline`  | `{ userId }`                   |
 
 ## Модель данных
 
@@ -217,10 +217,10 @@ npm run dev            # клиент на :3000, сервер на :3001
 - [x] Редактирование профиля
 - [x] Светлая/тёмная/системная тема
 - [x] ESLint, Prettier, Husky, lint-staged
+- [x] Групповые чаты в интерфейсе
 
 Планы:
 
-- [ ] Групповые чаты в интерфейсе (API уже поддерживает)
 - [ ] Пагинация истории сообщений
 - [ ] Тесты (unit и e2e)
 - [ ] Rate limiting и ограничение длины сообщений

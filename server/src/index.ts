@@ -83,20 +83,9 @@ async function start() {
   });
 }
 
-let shuttingDown = false;
-
 async function shutdown() {
-  if (shuttingDown) return;
-  shuttingDown = true;
-
-  try {
-    await markAllOffline();
-  } catch (error) {
-    console.error("Failed to mark users offline:", error);
-  } finally {
-    io.close();
-    process.exit(0);
-  }
+  await markAllOffline();
+  io.close();
 }
 
 process.on("SIGINT", shutdown);

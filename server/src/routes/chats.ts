@@ -94,8 +94,8 @@ router.get(
 );
 
 const createChatSchema = z.object({
-  usernames: z.array(z.string().min(1)).min(1),
-  name: z.string().trim().min(1).optional(),
+  usernames: z.array(z.string().trim().min(1)).min(1).max(50),
+  name: z.string().trim().min(1).max(64).optional(),
   isGroup: z.boolean().optional(),
 });
 
@@ -108,7 +108,20 @@ router.post(
     const parse = createChatSchema.safeParse(req.body);
     if (!parse.success) return res.status(400).json({ message: "Invalid payload" });
 
-    const { usernames, name, isGroup } = parse.data;
+    const { usernames: rawUsernames, name, isGroup } = parse.data;
+    const usernames = Array.from(new Set(rawUsernames));
+
+    if (isGroup) {
+      if (!name || name.length < 2) {
+        return res
+          .status(400)
+          .json({ message: "Название группы должно содержать минимум 2 символа" });
+      }
+
+      if (usernames.length < 1) {
+        return res.status(400).json({ message: "Пригласите хотя бы одного участника" });
+      }
+    }
 
     const users = await prisma.user.findMany({
       where: { username: { in: usernames } },
@@ -116,11 +129,25 @@ router.post(
     });
 
     const found = new Set(users.map((u) => u.username));
-    if (found.size !== new Set(usernames).size) {
+    if (found.size !== usernames.length) {
       return res.status(404).json({ message: "Some users not found" });
     }
 
-    const memberIds = Array.from(new Set([req.userId, ...users.map((u) => u.id)]));
+    const otherUsers = users.filter((user) => user.id !== req.userId);
+
+    if (otherUsers.length !== usernames.length) {
+      return res.status(400).json({ message: "Нельзя добавить себя в чат" });
+    }
+
+    if (isGroup && otherUsers.length < 1) {
+      return res.status(400).json({ message: "Пригласите хотя бы одного участника" });
+    }
+
+    if (isGroup === false && otherUsers.length !== 1) {
+      return res.status(400).json({ message: "Для личного чата нужен один собеседник" });
+    }
+
+    const memberIds = Array.from(new Set([req.userId, ...otherUsers.map((u) => u.id)]));
 
     if (!isGroup && memberIds.length === 2) {
       const existing = await prisma.chat.findFirst({
