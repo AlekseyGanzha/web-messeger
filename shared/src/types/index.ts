@@ -92,3 +92,5 @@ export type ServerToClientEvents = {
   "presence:update": (payload: PresenceUpdate) => void;
   "presence:snapshot": (payload: PresenceUpdate[]) => void;
 };
+
+export const MESSAGE_MAX_LENGTH = 4000;
