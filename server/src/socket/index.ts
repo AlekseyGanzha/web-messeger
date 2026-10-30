@@ -11,9 +11,13 @@ import {
   removeUserSocket,
   sendPresenceSnapshot,
 } from "./presence.js";
-import type { ClientToServerEvents, ServerToClientEvents } from "@web-messager/shared";
+import {
+  MESSAGE_MAX_LENGTH,
+  type ClientToServerEvents,
+  type ServerToClientEvents,
+} from "@web-messager/shared";
 
-type SocketData = { userId: string; username: string };
+type SocketData = { userId: string; username: string; chatIds: Set<string> };
 
 export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvents>) {
   io.use((socket, next) => {
@@ -34,35 +38,61 @@ export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvent
   });
 
   io.on("connection", (socket) => {
-    const { userId } = socket.data as SocketData;
+    const data = socket.data as SocketData;
+    data.chatIds = new Set();
 
     void (async () => {
-      socket.join(`user:${userId}`);
+      socket.join(`user:${data.userId}`);
 
-      const becameOnline = addUserSocket(userId, socket.id);
+      const becameOnline = addUserSocket(data.userId, socket.id);
       if (becameOnline) {
-        await markOnline(io, userId);
+        await markOnline(io, data.userId);
       }
 
       const memberships = await prisma.chatMember.findMany({
-        where: { userId },
+        where: { userId: data.userId },
         select: { chatId: true },
       });
+
+      for (const { chatId } of memberships) {
+        data.chatIds.add(chatId);
+        socket.join(chatId);
+      }
 
       if (memberships.length > 0) {
         socket.join(memberships.map((m) => m.chatId));
       }
 
-      await sendPresenceSnapshot(io, socket.id, userId);
+      await sendPresenceSnapshot(io, socket.id, data.userId);
     })().catch((error) => {
       console.error("Socket connection setup failed:", error);
     });
 
-    socket.on("chat:join", (chatId) => {
-      socket.join(chatId);
+    socket.on("chat:join", async (chatId) => {
+      if (typeof chatId !== "string") return;
+
+      if (data.chatIds.has(chatId)) {
+        socket.join(chatId);
+        return;
+      }
+
+      try {
+        const member = await prisma.chatMember.findUnique({
+          where: { chatId_userId: { chatId, userId: data.userId } },
+          select: { id: true },
+        });
+
+        if (!member) return;
+
+        data.chatIds.add(chatId);
+        socket.join(chatId);
+      } catch (error) {
+        console.error("chat:join failed:", error);
+      }
     });
 
     socket.on("chat:leave", (chatId) => {
+      data.chatIds.delete(chatId);
       socket.leave(chatId);
     });
 
@@ -71,17 +101,24 @@ export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvent
         const { chatId, text, imageUrl, imageMime, imageSize } = payload;
         if (typeof chatId !== "string" || typeof text !== "string") return;
 
-        const member = await prisma.chatMember.findFirst({ where: { chatId, userId } });
+        const member = await prisma.chatMember.findFirst({
+          where: { chatId, userId: data.userId },
+        });
         if (!member) return;
 
         const trimmed = text.trim();
+
+        if (trimmed.length > MESSAGE_MAX_LENGTH) {
+          return;
+        }
+
         const image = isUploadedImageUrl(imageUrl)
           ? { url: imageUrl, mime: imageMime ?? null, size: imageSize ?? null }
           : null;
 
         if (!trimmed && !image) return;
 
-        const message = await createMessage(chatId, userId, trimmed, image);
+        const message = await createMessage(chatId, data.userId, trimmed, image);
 
         io.to(chatId).emit("message:new", message);
       } catch (error) {
@@ -90,18 +127,20 @@ export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvent
     });
 
     socket.on("typing:start", (chatId) => {
-      socket.to(chatId).emit("typing:update", { chatId, userId, isTyping: true });
+      if (!data.chatIds.has(chatId)) return;
+      socket.to(chatId).emit("typing:update", { chatId, userId: data.userId, isTyping: true });
     });
 
     socket.on("typing:stop", (chatId) => {
-      socket.to(chatId).emit("typing:update", { chatId, userId, isTyping: false });
+      if (!data.chatIds.has(chatId)) return;
+      socket.to(chatId).emit("typing:update", { chatId, userId: data.userId, isTyping: false });
     });
 
     socket.on("disconnect", () => {
       void (async () => {
-        const becameOffline = removeUserSocket(userId, socket.id);
+        const becameOffline = removeUserSocket(data.userId, socket.id);
         if (becameOffline) {
-          await markOffline(io, userId);
+          await markOffline(io, data.userId);
         }
       })().catch((error) => {
         console.error("disconnect handler failed:", error);

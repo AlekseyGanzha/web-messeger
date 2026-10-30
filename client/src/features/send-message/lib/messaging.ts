@@ -1,4 +1,4 @@
-import type { Message, Chat } from "@web-messager/shared";
+import { type Message, type Chat, MESSAGE_MAX_LENGTH } from "@web-messager/shared";
 import { api, connectSocket } from "@/shared/api";
 import { useMessageStore } from "@/entities/message";
 import { useChatStore } from "@/entities/chat";
@@ -6,7 +6,7 @@ import { getSocket } from "@/shared/api";
 
 export function sendMessage(chatId: string, text: string): void {
   const trimmed = text.trim();
-  if (!trimmed) return;
+  if (!trimmed || trimmed.length > MESSAGE_MAX_LENGTH) return;
 
   const socket = connectSocket();
   socket.emit("message:send", { chatId, text: trimmed });

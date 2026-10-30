@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/shared/api";
-import { Avatar, Button, Input } from "@/shared/ui";
+import { ApiError } from "@/shared/api";
+import { Button, Input } from "@/shared/ui";
 import { createGroupChat } from "@/features/create-chat";
 import type { Chat, User } from "@web-messager/shared";
+import { useUserSearch } from "./model/use-user-search";
+import { SearchResults } from "./ui/search-results";
+import { SelectedMembers } from "./ui/selected-members";
 
 const MIN_MEMBERS = 1;
 
@@ -17,11 +20,10 @@ interface CreateGroupDialogProps {
 export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialogProps) {
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<User[]>([]);
   const [selected, setSelected] = useState<User[]>([]);
-  const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { results, searching } = useUserSearch({ open, query });
 
   useEffect(() => {
     if (!open) return;
@@ -35,45 +37,13 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open) return;
-
-    const q = query.trim();
-    if (q.length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-
-    let cancelled = false;
-    setSearching(true);
-
-    const timer = setTimeout(async () => {
-      try {
-        const users = await api<User[]>(`/users?q=${encodeURIComponent(q)}`);
-        if (!cancelled) setResults(users);
-      } catch {
-        if (!cancelled) setResults([]);
-      } finally {
-        if (!cancelled) setSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [query, open]);
-
-  useEffect(() => {
     if (open) return;
 
     setName("");
     setQuery("");
-    setResults([]);
     setSelected([]);
     setError(null);
     setLoading(false);
-    setSearching(false);
   }, [open]);
 
   if (!open) return null;
@@ -141,26 +111,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
           />
         </label>
 
-        {selected.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {selected.map((user) => (
-              <span
-                key={user.id}
-                className="flex items-center gap-1 rounded-full bg-elevated px-2 py-1 text-xs text-fg"
-              >
-                {user.displayName}
-                <button
-                  type="button"
-                  className="text-muted hover:text-danger"
-                  onClick={() => toggleUser(user)}
-                  aria-label={`Убрать ${user.displayName}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
+        <SelectedMembers selected={selected} onToggle={toggleUser} />
 
         <div className="flex flex-col gap-2">
           <label className="flex flex-col gap-1">
@@ -172,42 +123,12 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
             />
           </label>
 
-          <div className="max-h-56 overflow-y-auto rounded-lg border border-line">
-            {searching && <p className="p-3 text-sm text-muted">Поиск…</p>}
-
-            {!searching && query.trim().length < 2 && (
-              <p className="p-3 text-sm text-muted">Введите хотя бы 2 символа</p>
-            )}
-
-            {!searching && query.trim().length >= 2 && visibleResults.length === 0 && (
-              <p className="p-3 text-sm text-muted">Никого не нашли</p>
-            )}
-
-            <ul className="divide-y divide-line">
-              {visibleResults.map((user) => (
-                <li key={user.id}>
-                  <button
-                    type="button"
-                    onClick={() => toggleUser(user)}
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-hover"
-                  >
-                    <Avatar
-                      name={user.displayName}
-                      src={user.avatarUrl}
-                      size="sm"
-                      isOnline={user.isOnline}
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-fg">
-                        {user.displayName}
-                      </span>
-                      <span className="block truncate text-xs text-muted">@{user.username}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <SearchResults
+            query={query}
+            searching={searching}
+            users={visibleResults}
+            onToggle={toggleUser}
+          />
         </div>
 
         {error && <p className="text-sm text-danger">{error}</p>}

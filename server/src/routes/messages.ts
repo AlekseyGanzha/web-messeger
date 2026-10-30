@@ -4,11 +4,12 @@ import { prisma } from "../db/prisma.js";
 import { createMessage, toMessageDto } from "../services/message.service.js";
 import { asyncHandler } from "../utils/http.js";
 import { z } from "zod";
+import { MESSAGE_MAX_LENGTH } from "shared/dist/types/index.js";
 
 const router = Router();
 
 const messageSchema = z.object({
-  text: z.string().min(1),
+  text: z.string().trim().min(1).max(MESSAGE_MAX_LENGTH),
 });
 
 router.get(
