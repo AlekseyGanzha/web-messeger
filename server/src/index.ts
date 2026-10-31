@@ -12,6 +12,7 @@ import { uploadsRouter } from "./routes/uploads.js";
 import { markAllOffline } from "./socket/presence.js";
 import { setupSocket } from "./socket/index.js";
 import { UnsupportedFileTypeError, ensureUploadsDir } from "./services/upload.service.js";
+import { apiLimiter, authLimiter } from "./middlewares/rate-limit.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -37,11 +38,11 @@ app.use(
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-app.use("/api/auth", authRouter);
-app.use("/api/users", usersRouter);
-app.use("/api/chats", chatsRouter);
-app.use("/api/messages", messagesRouter);
-app.use("/api/uploads", uploadsRouter);
+app.use("/api/auth", authLimiter, authRouter);
+app.use("/api/users", apiLimiter, usersRouter);
+app.use("/api/chats", apiLimiter, chatsRouter);
+app.use("/api/messages", apiLimiter, messagesRouter);
+app.use("/api/uploads", apiLimiter, uploadsRouter);
 
 const io = new Server(server, {
   cors: {

@@ -41,19 +41,20 @@ ESLint и Prettier, а перед каждым коммитом автомати
 - История последних 50 сообщений в чате
 - Редактирование профиля: логин, отображаемое имя, ссылка на аватар
 - Адаптивная светлая/тёмная тема с режимом «как в системе» и сохранением выбора
+- Rate limiting: 10 попыток входа/регистрации за 15 минут и 120 запросов в минуту на API
 - Unit-тесты клиента и сервера (Vitest, React Testing Library, Supertest)
 - Единый стиль кода: ESLint 9, Prettier, Husky, lint-staged
 
 ## Стек
 
-| Слой          | Технологии                                                                   |
-| ------------- | ---------------------------------------------------------------------------- |
-| Клиент        | Next.js 15 (App Router), React 19, Zustand, Tailwind CSS 3, Socket.IO Client |
-| Сервер        | Node.js, Express 4, Socket.IO 4, Zod, JWT, bcryptjs, Multer                  |
-| База данных   | PostgreSQL + Prisma 6                                                        |
-| Общее         | TypeScript 5, npm workspaces                                                 |
-| Тестирование  | Vitest 4, React Testing Library, jsdom, Supertest                            |
-| Качество кода | ESLint 9 (flat config), Prettier, Husky 9, lint-staged                       |
+| Слой          | Технологии                                                                      |
+| ------------- | ------------------------------------------------------------------------------- |
+| Клиент        | Next.js 15 (App Router), React 19, Zustand, Tailwind CSS 3, Socket.IO Client    |
+| Сервер        | Node.js, Express 4, Socket.IO 4, Zod, JWT, bcryptjs, Multer, express-rate-limit |
+| База данных   | PostgreSQL + Prisma 6                                                           |
+| Общее         | TypeScript 5, npm workspaces                                                    |
+| Тестирование  | Vitest 4, React Testing Library, jsdom, Supertest                               |
+| Качество кода | ESLint 9 (flat config), Prettier, Husky 9, lint-staged                          |
 
 ## Архитектура
 
@@ -76,7 +77,7 @@ web-messager/
 │   └── src/
 │       ├── config/             # Переменные окружения
 │       ├── db/                 # PrismaClient
-│       ├── middlewares/        # JWT-аутентификация
+│       ├── middlewares/        # JWT-аутентификация и rate limiting
 │       ├── routes/             # auth, users, chats, messages, uploads
 │       ├── services/           # chat, message, upload
 │       ├── socket/             # Обработчики Socket.IO
@@ -99,7 +100,7 @@ web-messager/
 
 ### Требования
 
-- Node.js 20+
+- Node.js 20.19+
 - PostgreSQL 14+
 
 ### Установка
@@ -158,6 +159,9 @@ npm run dev            # клиент на :3000, сервер на :3001
 ## API
 
 Все защищённые маршруты требуют заголовок `Authorization: Bearer <token>`.
+
+На маршруты `/api/auth/*` действует лимит 10 запросов за 15 минут с одного IP, на остальной
+API — 120 запросов в минуту. При превышении сервер возвращает `429 Too Many Requests`.
 
 | Метод   | Путь                             | Доступ | Описание                         |
 | ------- | -------------------------------- | ------ | -------------------------------- |
@@ -246,17 +250,18 @@ npm run dev            # клиент на :3000, сервер на :3001
 - [x] Светлая/тёмная/системная тема
 - [x] Декомпозиция виджетов на хуки и UI-компоненты
 - [x] Unit-тесты клиента и сервера (Vitest, RTL, Supertest)
+- [x] Rate limiting и защита от спама
 - [x] ESLint, Prettier, Husky, lint-staged
 
 Планы:
 
 - [ ] Пагинация истории сообщений
 - [ ] E2E-тесты (Playwright)
-- [ ] Rate limiting и защита от спама
 - [ ] Docker и CI-пайплайн
 
 Известные ограничения текущей версии: REST-отправка сообщения не рассылается через Socket.IO,
 история ограничена последними 50 сообщениями без подгрузки, управление группой (добавление,
 удаление участников и выход) пока не реализовано, а индикатор набора текста может остаться
-видимым, если вкладка закрыта без корректного отключения сокета. Эти пункты закрываются на
-следующем этапе.
+видимым, если вкладка закрыта без корректного отключения сокета. Счётчики rate limiting хранятся
+в памяти процесса, поэтому при запуске нескольких инстансов сервера потребуется общий store
+(например, Redis). Эти пункты закрываются на следующем этапе.
