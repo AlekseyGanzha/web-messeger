@@ -38,6 +38,11 @@ export interface Message {
   createdAt: string;
 }
 
+export interface MessagesPage {
+  messages: Message[];
+  mextCursor: string | null;
+}
+
 export interface AuthPayload {
   userId: string;
   username: string;
@@ -94,3 +99,5 @@ export type ServerToClientEvents = {
 };
 
 export const MESSAGE_MAX_LENGTH = 4000;
+export const MESSAGE_PAGE_SIZE = 50;
+export const MESSAGE_PAGE_MAX = 100;

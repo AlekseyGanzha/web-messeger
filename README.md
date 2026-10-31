@@ -41,6 +41,7 @@ ESLint и Prettier, а перед каждым коммитом автомати
 - История последних 50 сообщений в чате
 - Редактирование профиля: логин, отображаемое имя, ссылка на аватар
 - Адаптивная светлая/тёмная тема с режимом «как в системе» и сохранением выбора
+- Unit-тесты клиента и сервера (Vitest, React Testing Library, Supertest)
 - Единый стиль кода: ESLint 9, Prettier, Husky, lint-staged
 
 ## Стек
@@ -51,6 +52,7 @@ ESLint и Prettier, а перед каждым коммитом автомати
 | Сервер        | Node.js, Express 4, Socket.IO 4, Zod, JWT, bcryptjs, Multer                  |
 | База данных   | PostgreSQL + Prisma 6                                                        |
 | Общее         | TypeScript 5, npm workspaces                                                 |
+| Тестирование  | Vitest 4, React Testing Library, jsdom, Supertest                            |
 | Качество кода | ESLint 9 (flat config), Prettier, Husky 9, lint-staged                       |
 
 ## Архитектура
@@ -141,6 +143,8 @@ npm run dev            # клиент на :3000, сервер на :3001
 | ----------------------------- | ------------------------------------- |
 | `npm run dev`                 | Запуск клиента и сервера одновременно |
 | `npm run build`               | Сборка `shared` → `client` → `server` |
+| `npm test`                    | Unit-тесты клиента и сервера          |
+| `npm run test:watch`          | Тесты в watch-режиме                  |
 | `npm run typecheck`           | Проверка типов во всех воркспейсах    |
 | `npm run lint`                | ESLint по всему репозиторию           |
 | `npm run lint:fix`            | ESLint с автоисправлением             |
@@ -215,6 +219,15 @@ npm run dev            # клиент на :3000, сервер на :3001
 - **Декомпозиция виджетов** — состояние и эффекты вынесены в `model/` (кастомные хуки), а
   разметка — в `ui/`-компоненты; основной компонент отвечает только за композицию
 
+## Тестирование
+
+- `npm test` — unit-тесты клиента и сервера.
+- **Клиент:** Vitest + jsdom + React Testing Library; покрыты Zustand-сторы, утилиты форматирования
+  и ключевые компоненты (`AuthForm`, `ChatHeader`, `ChatListItem`, `MessageItem`).
+- **Сервер:** Vitest + Supertest; покрыты DTO-сервисы, создание сообщений, JWT-middleware и
+  валидация маршрутов авторизации.
+- E2E-тесты пока не настроены — в планах Playwright.
+
 ## Статус проекта
 
 Проект находится на стадии **MVP (v0.0.1)**.
@@ -232,12 +245,13 @@ npm run dev            # клиент на :3000, сервер на :3001
 - [x] Редактирование профиля
 - [x] Светлая/тёмная/системная тема
 - [x] Декомпозиция виджетов на хуки и UI-компоненты
+- [x] Unit-тесты клиента и сервера (Vitest, RTL, Supertest)
 - [x] ESLint, Prettier, Husky, lint-staged
 
 Планы:
 
 - [ ] Пагинация истории сообщений
-- [ ] Тесты (unit и e2e)
+- [ ] E2E-тесты (Playwright)
 - [ ] Rate limiting и защита от спама
 - [ ] Docker и CI-пайплайн
 
