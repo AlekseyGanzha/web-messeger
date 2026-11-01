@@ -1,5 +1,6 @@
 import express from "express";
 import http from "node:http";
+import helmet from "helmet";
 import cors from "cors";
 import multer from "multer";
 import { Server } from "socket.io";
@@ -35,6 +36,14 @@ app.use(
     },
   }),
 );
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
+
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 

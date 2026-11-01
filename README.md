@@ -12,6 +12,7 @@
 [![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma)](https://www.prisma.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![CI](https://github.com/AlekseyGanzha/web-messeger/actions/workflows/ci.yml/badge.svg)](https://github.com/AlekseyGanzha/web-messeger/actions/workflows/ci.yml)
 
 </div>
 
@@ -83,6 +84,9 @@ web-messager/
 │       ├── socket/             # Обработчики Socket.IO
 │       └── utils/              # asyncHandler и вспомогательное
 ├── shared/                     # Общие типы и контракты событий
+├── Dockerfile                  # Multi-stage сборка client и server
+├── docker-compose.yml          # PostgreSQL + server + client
+├── .github/workflows/ci.yml    # CI: format, lint, typecheck, тесты, сборка
 ├── eslint.config.mjs
 ├── .prettierrc.json
 └── package.json                # Workspaces, husky, lint-staged
@@ -102,6 +106,7 @@ web-messager/
 
 - Node.js 20.19+
 - PostgreSQL 14+
+- Docker и Docker Compose (опционально)
 
 ### Установка
 
@@ -137,6 +142,18 @@ npm install
 npm run db:migrate     # применить миграции Prisma
 npm run dev            # клиент на :3000, сервер на :3001
 ```
+
+### Запуск в Docker
+
+```bash
+docker compose up --build
+```
+
+Поднимаются PostgreSQL, сервер (`:3001`) и клиент (`:3000`). Миграции Prisma применяются
+автоматически при старте сервера, а загруженные изображения сохраняются в volume `uploads`.
+Значения БД и `JWT_SECRET` по умолчанию подходят только для локального запуска — переопредели
+их через переменные окружения `JWT_SECRET`, `CORS_ORIGIN`, `NEXT_PUBLIC_API_URL` и
+`NEXT_PUBLIC_SOCKET_URL`.
 
 ## Скрипты
 
@@ -222,6 +239,8 @@ API — 120 запросов в минуту. При превышении сер
   только по staged-файлам
 - **Декомпозиция виджетов** — состояние и эффекты вынесены в `model/` (кастомные хуки), а
   разметка — в `ui/`-компоненты; основной компонент отвечает только за композицию
+- **CI** — GitHub Actions на Node 20.19 прогоняет `format:check`, `lint`, `typecheck`, тесты и
+  сборку монорепозитория
 
 ## Тестирование
 
@@ -251,13 +270,13 @@ API — 120 запросов в минуту. При превышении сер
 - [x] Декомпозиция виджетов на хуки и UI-компоненты
 - [x] Unit-тесты клиента и сервера (Vitest, RTL, Supertest)
 - [x] Rate limiting и защита от спама
+- [x] Docker и CI-пайплайн
 - [x] ESLint, Prettier, Husky, lint-staged
 
 Планы:
 
 - [ ] Пагинация истории сообщений
 - [ ] E2E-тесты (Playwright)
-- [ ] Docker и CI-пайплайн
 
 Известные ограничения текущей версии: REST-отправка сообщения не рассылается через Socket.IO,
 история ограничена последними 50 сообщениями без подгрузки, управление группой (добавление,
