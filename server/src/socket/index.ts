@@ -139,7 +139,16 @@ export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvent
     socket.on("disconnect", () => {
       void (async () => {
         const becameOffline = removeUserSocket(data.userId, socket.id);
+
         if (becameOffline) {
+          for (const chatId of data.chatIds) {
+            io.to(chatId).emit("typing:update", {
+              chatId,
+              userId: data.userId,
+              isTyping: false,
+            });
+          }
+
           await markOffline(io, data.userId);
         }
       })().catch((error) => {

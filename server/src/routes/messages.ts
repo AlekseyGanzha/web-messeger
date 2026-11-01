@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { authenticate, type AuthRequest } from "../middlewares/auth.js";
 import { prisma } from "../db/prisma.js";
+import type { Server } from "socket.io";
+import type { ClientToServerEvents, ServerToClientEvents } from "shared/dist/types/index.js";
 import { createMessage, toMessageDto } from "../services/message.service.js";
 import { asyncHandler } from "../utils/http.js";
 import { z } from "zod";
@@ -48,6 +50,9 @@ router.post(
     if (!member) return res.status(403).json({ message: "Not a member" });
 
     const result = await createMessage(chatId, req.userId, text);
+
+    const io = req.app.get("io") as Server<ClientToServerEvents, ServerToClientEvents> | undefined;
+    io?.to(chatId).emit("message:new", result);
 
     return res.status(201).json(result);
   }),
