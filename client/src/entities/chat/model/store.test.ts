@@ -68,4 +68,19 @@ describe("useChatStore", () => {
 
     expect(useChatStore.getState().activeChatId).toBe("chat-1");
   });
+
+  it("removes a chat and clears it when it was active", () => {
+    useChatStore
+      .getState()
+      .setChats([
+        chat("chat-1", "2026-10-30T10:00:00.000Z"),
+        chat("chat-2", "2026-10-30T11:00:00.000Z"),
+      ]);
+    useChatStore.getState().setActiveChat("chat-1");
+
+    useChatStore.getState().removeChat("chat-1");
+
+    expect(useChatStore.getState().chats.map((item) => item.id)).toEqual(["chat-2"]);
+    expect(useChatStore.getState().activeChatId).toBeNull();
+  });
 });

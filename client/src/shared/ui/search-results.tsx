@@ -1,4 +1,4 @@
-import { Avatar } from "@/shared/ui";
+import { Avatar } from "./avatar";
 import type { User } from "@web-messager/shared";
 
 interface SearchResultsProps {
@@ -6,9 +6,16 @@ interface SearchResultsProps {
   searching: boolean;
   users: User[];
   onToggle: (user: User) => void;
+  emptyLabel?: string;
 }
 
-export function SearchResults({ query, searching, users, onToggle }: SearchResultsProps) {
+export function SearchResults({
+  query,
+  searching,
+  users,
+  onToggle,
+  emptyLabel = "Никого не нашли",
+}: SearchResultsProps) {
   return (
     <div className="max-h-56 overflow-y-auto rounded-lg border border-line">
       {searching && <p className="p-3 text-sm text-muted">Поиск…</p>}
@@ -18,7 +25,7 @@ export function SearchResults({ query, searching, users, onToggle }: SearchResul
       )}
 
       {!searching && query.trim().length >= 2 && users.length === 0 && (
-        <p className="p-3 text-sm text-muted">Никого не нашли</p>
+        <p className="p-3 text-sm text-muted">{emptyLabel}</p>
       )}
 
       <ul className="divide-y divide-line">

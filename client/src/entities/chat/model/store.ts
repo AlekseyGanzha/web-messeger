@@ -7,6 +7,7 @@ interface ChatState {
   setChats: (chats: Chat[]) => void;
   setActiveChat: (id: string | null) => void;
   addChat: (chat: Chat) => void;
+  removeChat: (id: string) => void;
   touchChat: (message: Message) => void;
 }
 
@@ -21,6 +22,11 @@ export const useChatStore = create<ChatState>((set) => ({
         ? { chats: s.chats.map((c) => (c.id === chat.id ? chat : c)) }
         : { chats: [chat, ...s.chats] },
     ),
+  removeChat: (id) =>
+    set((s) => ({
+      chats: s.chats.filter((chat) => chat.id !== id),
+      activeChatId: s.activeChatId === id ? null : s.activeChatId,
+    })),
   touchChat: (message) =>
     set((s) => ({
       chats: s.chats

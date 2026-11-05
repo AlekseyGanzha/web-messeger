@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useChatStore } from "@/entities/chat";
 import { useMessageStore } from "@/entities/message";
 import { useUserStore } from "@/entities/user";
+import { GroupSettingsDialog } from "@/widgets/group-settings";
 import { useChatComposer } from "./model/use-chat-composer";
 import { useChatHistory } from "./model/use-chat-history";
 import { useChatScroll } from "./model/use-chat-scroll";
@@ -20,6 +22,9 @@ export function ChatWindow() {
     useMessageStore((s) => (activeChatId ? s.byChat[activeChatId] : undefined)) ?? EMPTY_MESSAGES;
   const me = useUserStore((s) => s.me);
   const chat = chats.find((c) => c.id === activeChatId);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => setSettingsOpen(false), [activeChatId]);
 
   const composer = useChatComposer(activeChatId);
   const scroll = useChatScroll(activeChatId, messages);
@@ -32,7 +37,12 @@ export function ChatWindow() {
 
   return (
     <div className="flex h-full flex-col">
-      <ChatHeader chat={chat} meId={me?.id} typingUserIds={typingUserIds} />
+      <ChatHeader
+        chat={chat}
+        meId={me?.id}
+        typingUserIds={typingUserIds}
+        onOpenSettings={chat.isGroup ? () => setSettingsOpen(true) : undefined}
+      />
       <MessageList
         chat={chat}
         messages={messages}
@@ -47,6 +57,12 @@ export function ChatWindow() {
         onScrollToBottom={() => scroll.scrollToBottom("smooth")}
       />
       <MessageComposer composer={composer} />
+      <GroupSettingsDialog
+        open={settingsOpen}
+        chat={chat}
+        meId={me?.id}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   );
 }

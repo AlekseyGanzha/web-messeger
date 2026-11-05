@@ -33,10 +33,16 @@ model Chat {
   messages Message[]
 }
 
+enum ChatRole {
+  OWNER
+  MEMBER
+}
+
 model ChatMember {
   id       String   @id @default(uuid())
   chatId   String
   userId   String
+  role     ChatRole @default(MEMBER)
   joinedAt DateTime @default(now()) @db.Timestamptz(6)
 
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)

@@ -9,6 +9,7 @@ import { apiConfig } from "@/shared/config";
 import { useChatStore } from "@/entities/chat";
 import { usePresenceStore, useUserStore } from "@/entities/user";
 import { subscribeToMessages } from "@/features/send-message";
+import { subscribeToGroupEvents } from "@/features/manage-group";
 import { subscribeToPresence } from "@/features/presence";
 import { AppHeader } from "@/widgets/app-header";
 import type { Chat, User } from "@web-messager/shared";
@@ -40,12 +41,14 @@ export default function ChatPage() {
 
     const unsubscribeMessages = subscribeToMessages();
     const unsubscribePresence = subscribeToPresence();
+    const unsubscribeGroupEvents = subscribeToGroupEvents();
     connectSocket();
 
     return () => {
       cancelled = true;
       unsubscribeMessages();
       unsubscribePresence();
+      unsubscribeGroupEvents();
       disconnectSocket();
       useChatStore.getState().setChats([]);
       useChatStore.getState().setActiveChat(null);

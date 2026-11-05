@@ -23,7 +23,7 @@ type ChatWithRelations = {
   name: string | null;
   isGroup: boolean;
   updatedAt: Date;
-  members: { userId: string; user: MemberUser }[];
+  members: { userId: string; role?: "OWNER" | "MEMBER"; user: MemberUser }[];
   messages: {
     id: string;
     chatId: string;
@@ -45,6 +45,7 @@ export function toChatDto(chat: ChatWithRelations, currentUserId: string): Chat 
     id: chat.id,
     name: name ?? null,
     isGroup: chat.isGroup,
+    ownerId: chat.members.find((m) => m.role === "OWNER")?.userId ?? null,
     updatedAt: chat.updatedAt.toISOString(),
     members: chat.members.map((m) => ({
       ...m.user,

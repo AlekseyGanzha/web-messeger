@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/api";
-import { Button, Input } from "@/shared/ui";
+import { Button, Input, SearchResults } from "@/shared/ui";
+import { useUserSearch } from "@/shared/lib/use-user-search";
 import { createGroupChat } from "@/features/create-chat";
 import type { Chat, User } from "@web-messager/shared";
-import { useUserSearch } from "./model/use-user-search";
-import { SearchResults } from "./ui/search-results";
 import { SelectedMembers } from "./ui/selected-members";
 
 const MIN_MEMBERS = 1;

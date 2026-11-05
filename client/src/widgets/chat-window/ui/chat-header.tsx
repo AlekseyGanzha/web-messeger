@@ -1,7 +1,7 @@
 "use client";
 
 import { usePresenceStore } from "@/entities/user";
-import { Avatar } from "@/shared/ui";
+import { Avatar, Button } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import { formatLastSeen } from "@/shared/lib/format-last-seen";
 import { useNow } from "@/shared/lib/use-now";
@@ -11,9 +11,10 @@ interface ChatHeaderProps {
   chat: Chat;
   meId?: string;
   typingUserIds: string[];
+  onOpenSettings?: () => void;
 }
 
-export function ChatHeader({ chat, meId, typingUserIds }: ChatHeaderProps) {
+export function ChatHeader({ chat, meId, typingUserIds, onOpenSettings }: ChatHeaderProps) {
   const other = chat.isGroup ? null : chat.members.find((member) => member.id !== meId);
   const presence = usePresenceStore((s) => (other ? s.byUserId[other.id] : undefined));
   const isOnline = presence?.isOnline ?? other?.isOnline ?? false;
@@ -65,6 +66,18 @@ export function ChatHeader({ chat, meId, typingUserIds }: ChatHeaderProps) {
           )
         )}
       </div>
+      {chat.isGroup && onOpenSettings && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="ml-auto"
+          onClick={onOpenSettings}
+          aria-label="Настройки группы"
+        >
+          Настройки группы
+        </Button>
+      )}
     </header>
   );
 }

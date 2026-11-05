@@ -72,8 +72,8 @@ describe("toChatDto", () => {
         isGroup: true,
         updatedAt: new Date("2026-10-30T09:00:00.000Z"),
         members: [
-          { userId: "user-1", user: alice },
-          { userId: "user-2", user: bob },
+          { userId: "user-1", role: "OWNER", user: alice },
+          { userId: "user-2", role: "MEMBER", user: bob },
         ],
         messages: [],
       },
@@ -82,6 +82,7 @@ describe("toChatDto", () => {
 
     expect(chat.name).toBe("Команда");
     expect(chat.isGroup).toBe(true);
+    expect(chat.ownerId).toBe("user-1");
     expect(chat.lastMessage).toBeUndefined();
     expect(chat.members).toHaveLength(2);
   });

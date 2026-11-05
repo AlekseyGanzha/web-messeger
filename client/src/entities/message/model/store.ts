@@ -5,6 +5,7 @@ interface MessageState {
   byChat: Record<string, Message[]>;
   setMessages: (chatId: string, messages: Message[]) => void;
   addMessage: (message: Message) => void;
+  removeChat: (chatId: string) => void;
   clear: () => void;
 }
 
@@ -21,6 +22,11 @@ export const useMessageStore = create<MessageState>((set) => ({
           [message.chatId]: [...list, message],
         },
       };
+    }),
+  removeChat: (chatId) =>
+    set((s) => {
+      const { [chatId]: _removed, ...rest } = s.byChat;
+      return { byChat: rest };
     }),
   clear: () => set({ byChat: {} }),
 }));

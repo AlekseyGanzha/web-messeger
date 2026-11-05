@@ -22,6 +22,7 @@ export interface Chat {
   id: string;
   name: string | null;
   isGroup: boolean;
+  ownerId?: string | null;
   updatedAt: string;
   members: User[];
   lastMessage?: MessagePreview;
@@ -90,9 +91,13 @@ export type ClientToServerEvents = {
   "typing:stop": (chatId: string) => void;
 };
 
+export type ChatRemovedReason = "deleted" | "removed" | "left";
+
 export type ServerToClientEvents = {
   "message:new": (message: Message) => void;
   "chat:new": (chat: Chat) => void;
+  "chat:updated": (chat: Chat) => void;
+  "chat:removed": (payload: { chatId: string; reason: ChatRemovedReason }) => void;
   "typing:update": (payload: { chatId: string; userId: string; isTyping: boolean }) => void;
   "presence:update": (payload: PresenceUpdate) => void;
   "presence:snapshot": (payload: PresenceUpdate[]) => void;
