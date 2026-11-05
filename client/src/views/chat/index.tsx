@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChatList } from "@/widgets/chat-list";
 import { ChatWindow } from "@/widgets/chat-window";
-import { api, connectSocket, disconnectSocket } from "@/shared/api";
+import { api, ApiError, connectSocket, disconnectSocket } from "@/shared/api";
 import { apiConfig } from "@/shared/config";
+import { Button } from "@/shared/ui";
 import { useChatStore } from "@/entities/chat";
 import { usePresenceStore, useUserStore } from "@/entities/user";
 import { subscribeToMessages } from "@/features/send-message";
@@ -16,6 +17,8 @@ import type { Chat, User } from "@web-messager/shared";
 
 export default function ChatPage() {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem(apiConfig.TOKEN_KEY);
@@ -25,6 +28,7 @@ export default function ChatPage() {
     }
 
     let cancelled = false;
+    setError(null);
 
     (async () => {
       try {
@@ -32,10 +36,10 @@ export default function ChatPage() {
         if (cancelled) return;
         useUserStore.getState().setMe(me);
         useChatStore.getState().setChats(chats);
-      } catch {
+      } catch (err) {
         if (cancelled) return;
-        localStorage.removeItem(apiConfig.TOKEN_KEY);
-        router.replace("/login");
+        if (err instanceof ApiError && err.status === 401) return;
+        setError("Не удалось загрузить чаты. Проверьте соединение с сервером.");
       }
     })();
 
@@ -55,7 +59,16 @@ export default function ChatPage() {
       usePresenceStore.getState().reset();
       useUserStore.getState().setMe(null);
     };
-  }, [router]);
+  }, [router, retryKey]);
+
+  if (error) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-panel p-6 text-center">
+        <p className="text-sm text-muted">{error}</p>
+        <Button onClick={() => setRetryKey((key) => key + 1)}>Повторить</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col">

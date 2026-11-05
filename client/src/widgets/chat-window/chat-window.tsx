@@ -28,8 +28,17 @@ export function ChatWindow() {
 
   const composer = useChatComposer(activeChatId);
   const scroll = useChatScroll(activeChatId, messages);
-  useChatHistory(activeChatId);
+  const history = useChatHistory(activeChatId);
   const typingUserIds = useTypingIndicator(activeChatId, me?.id, composer.text);
+
+  function handleScroll() {
+    scroll.handleScroll();
+
+    const el = scroll.listRef.current;
+    if (el && el.scrollTop < 80) {
+      void history.loadOlder();
+    }
+  }
 
   if (!chat || !activeChatId) {
     return <div className="flex h-full items-center justify-center text-muted">Выберите чат</div>;
@@ -50,7 +59,8 @@ export function ChatWindow() {
         listRef={scroll.listRef}
         dragOver={composer.dragOver}
         showScrollButton={scroll.showScrollButton}
-        onScroll={scroll.handleScroll}
+        loadingOlder={history.loadingOlder}
+        onScroll={handleScroll}
         onDragOver={composer.handleDragOver}
         onDragLeave={composer.handleDragLeave}
         onDrop={composer.handleDrop}

@@ -12,6 +12,7 @@ interface MessageListProps {
   listRef: RefObject<HTMLDivElement | null>;
   dragOver: boolean;
   showScrollButton: boolean;
+  loadingOlder?: boolean;
   onScroll: () => void;
   onDragOver: (event: DragEvent<HTMLDivElement>) => void;
   onDragLeave: () => void;
@@ -26,6 +27,7 @@ export function MessageList({
   listRef,
   dragOver,
   showScrollButton,
+  loadingOlder = false,
   onScroll,
   onDragOver,
   onDragLeave,
@@ -45,6 +47,11 @@ export function MessageList({
           dragOver && "bg-primary/5 outline-dashed outline-2 outline-primary",
         )}
       >
+        {loadingOlder && (
+          <p className="py-2 text-center text-xs text-muted" role="status">
+            Загрузка истории...
+          </p>
+        )}
         {messages.map((m) => {
           const sender = chat.isGroup
             ? chat.members.find((member) => member.id === m.senderId)

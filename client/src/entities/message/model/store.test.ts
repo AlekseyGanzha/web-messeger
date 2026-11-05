@@ -42,6 +42,20 @@ describe("useMessageStore", () => {
     expect(useMessageStore.getState().byChat["chat-1"]).toEqual([incoming]);
   });
 
+  it("prepends older messages and ignores duplicates", () => {
+    const store = useMessageStore.getState();
+    const older = message("m1", "2026-10-30T12:01:00.000Z");
+    const newer = message("m2", "2026-10-30T12:02:00.000Z");
+
+    store.setMessages("chat-1", [newer]);
+    store.prependMessages("chat-1", [older, newer]);
+
+    expect(useMessageStore.getState().byChat["chat-1"]?.map((item) => item.id)).toEqual([
+      "m1",
+      "m2",
+    ]);
+  });
+
   it("clears all messages", () => {
     useMessageStore.getState().setMessages("chat-1", [message("m1", "2026-10-30T12:01:00.000Z")]);
     useMessageStore.getState().clear();

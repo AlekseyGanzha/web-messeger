@@ -1,11 +1,21 @@
 import { apiConfig } from "@/shared/config";
 
+export const UNAUTHORIZED_EVENT = "wm:unauthorized";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
   ) {
     super(message);
+  }
+}
+
+function expireSession() {
+  localStorage.removeItem(apiConfig.TOKEN_KEY);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
 }
 
@@ -24,6 +34,11 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ message: res.statusText }));
+
+    if (res.status === 401 && token && !path.startsWith("/auth/")) {
+      expireSession();
+    }
+
     throw new ApiError(res.status, body.message ?? "Request failed");
   }
 

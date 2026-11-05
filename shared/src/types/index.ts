@@ -41,7 +41,7 @@ export interface Message {
 
 export interface MessagesPage {
   messages: Message[];
-  mextCursor: string | null;
+  nextCursor: string | null;
 }
 
 export interface AuthPayload {
