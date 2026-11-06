@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/shared/api";
+import { api, getSocket } from "@/shared/api";
 import { useMessageStore } from "@/entities/message";
+import { fetchMissedMessages, markChatRead } from "@/features/send-message";
 import type { MessagesPage } from "@web-messager/shared";
 
 export function useChatHistory(activeChatId: string | null) {
@@ -23,8 +24,9 @@ export function useChatHistory(activeChatId: string | null) {
       try {
         const page = await api<MessagesPage>(`/messages/${activeChatId}/messages`);
         if (cancelled) return;
-        useMessageStore.getState().setMessages(activeChatId, page.messages);
+        useMessageStore.getState().mergeMessages(activeChatId, page.messages);
         cursorRef.current = page.nextCursor;
+        markChatRead(activeChatId);
       } catch {}
     })();
 
@@ -32,6 +34,49 @@ export function useChatHistory(activeChatId: string | null) {
       cancelled = true;
     };
   }, [activeChatId]);
+
+  const refreshLatest = useCallback(async () => {
+    const chatId = activeChatIdRef.current;
+    if (!chatId) return;
+
+    try {
+      const store = useMessageStore.getState();
+      const existing = store.byChat[chatId] ?? [];
+
+      if (existing.length === 0) {
+        const page = await api<MessagesPage>(`/messages/${chatId}/messages`);
+        if (activeChatIdRef.current !== chatId) return;
+        store.setMessages(chatId, page.messages);
+        cursorRef.current = page.nextCursor;
+      } else {
+        const newestSynced = [...existing]
+          .reverse()
+          .find((message) => !message.id.startsWith("temp-"));
+
+        if (newestSynced) {
+          await fetchMissedMessages(chatId, newestSynced.id);
+          if (activeChatIdRef.current !== chatId) return;
+        }
+
+        const page = await api<MessagesPage>(`/messages/${chatId}/messages`);
+        if (activeChatIdRef.current !== chatId) return;
+        store.mergeMessages(chatId, page.messages);
+      }
+
+      markChatRead(chatId);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!activeChatId) return;
+
+    const socket = getSocket();
+    socket.on("connect", refreshLatest);
+
+    return () => {
+      socket.off("connect", refreshLatest);
+    };
+  }, [activeChatId, refreshLatest]);
 
   const loadOlder = useCallback(async () => {
     const chatId = activeChatIdRef.current;

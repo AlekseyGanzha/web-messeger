@@ -33,12 +33,20 @@ function isOwner(chat: { members: { userId: string; role: string }[] }, userId: 
 function emitChatUpdated(io: AppIo | undefined, chat: ChatDtoSource) {
   if (!io) return;
 
-  const recipientIds = chat.members.map((member) => member.userId);
-  const dto = toChatDto(chat, recipientIds[0] ?? "");
-
-  for (const userId of recipientIds) {
-    io.to(`user:${userId}`).emit("chat:updated", dto);
+  for (const { userId } of chat.members) {
+    io.to(`user:${userId}`).emit("chat:updated", toChatDto(chat, userId));
   }
+}
+
+async function countUnread(chatId: string, userId: string, lastReadAt: Date | null | undefined) {
+  return prisma.message.count({
+    where: {
+      chatId,
+      senderId: { not: userId },
+      deletedAt: null,
+      ...(lastReadAt ? { createdAt: { gt: lastReadAt } } : {}),
+    },
+  });
 }
 
 function emitChatRemoved(
@@ -83,7 +91,17 @@ router.get(
       orderBy: { updatedAt: "desc" },
     });
 
-    return res.json(chats.map((chat) => toChatDto(chat, req.userId!)));
+    const userId = req.userId;
+
+    const result = await Promise.all(
+      chats.map(async (chat) => {
+        const membership = chat.members.find((member) => member.userId === userId);
+        const unreadCount = await countUnread(chat.id, userId, membership?.lastReadAt);
+        return toChatDto(chat, userId, unreadCount);
+      }),
+    );
+
+    return res.json(result);
   }),
 );
 

@@ -69,6 +69,54 @@ describe("useChatStore", () => {
     expect(useChatStore.getState().activeChatId).toBe("chat-1");
   });
 
+  it("increments unread counts and clears them when read", () => {
+    useChatStore.getState().setChats([chat("chat-1", "2026-10-30T10:00:00.000Z")]);
+
+    useChatStore.getState().incrementUnread("chat-1");
+    useChatStore.getState().incrementUnread("chat-1");
+
+    expect(useChatStore.getState().chats[0]?.unreadCount).toBe(2);
+
+    useChatStore.getState().markRead("chat-1");
+
+    expect(useChatStore.getState().chats[0]?.unreadCount).toBe(0);
+  });
+
+  it("keeps the unread count when a chat update omits it", () => {
+    useChatStore
+      .getState()
+      .setChats([{ ...chat("chat-1", "2026-10-30T10:00:00.000Z"), unreadCount: 4 }]);
+
+    useChatStore
+      .getState()
+      .addChat({ ...chat("chat-1", "2026-10-30T10:00:00.000Z"), name: "Renamed" });
+
+    expect(useChatStore.getState().chats[0]?.name).toBe("Renamed");
+    expect(useChatStore.getState().chats[0]?.unreadCount).toBe(4);
+  });
+
+  it("updates a member read cursor", () => {
+    const member = {
+      id: "user-1",
+      username: "user-1",
+      displayName: "User",
+      avatarUrl: null,
+      isOnline: true,
+      lastSeenAt: null,
+      lastReadAt: null,
+    };
+
+    useChatStore
+      .getState()
+      .setChats([{ ...chat("chat-1", "2026-10-30T10:00:00.000Z"), members: [member] }]);
+
+    useChatStore.getState().applyRead("chat-1", "user-1", "2026-10-30T12:00:00.000Z");
+
+    expect(useChatStore.getState().chats[0]?.members[0]?.lastReadAt).toBe(
+      "2026-10-30T12:00:00.000Z",
+    );
+  });
+
   it("removes a chat and clears it when it was active", () => {
     useChatStore
       .getState()

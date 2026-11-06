@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Chat, User } from "@web-messager/shared";
+import type { User } from "@web-messager/shared";
 import { usePresenceStore } from "@/entities/user";
 import { ChatListItem } from "./chat-list-item";
 

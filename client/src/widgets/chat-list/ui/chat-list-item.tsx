@@ -23,19 +23,23 @@ export function ChatListItem({ chat, meId, now, active, onSelect }: ChatListItem
     : (chat.name ?? other?.displayName ?? "Чат");
 
   const subtitle = chat.lastMessage
-    ? chat.lastMessage.text || (chat.lastMessage.imageUrl ? "Изображение" : "")
+    ? chat.lastMessage.deletedAt
+      ? "Сообщение удалено"
+      : chat.lastMessage.text || (chat.lastMessage.imageUrl ? "Изображение" : "")
     : chat.isGroup
       ? `Участников: ${chat.members.length}`
       : isOnline
         ? "в сети"
         : formatLastSeen(lastSeenAt, now);
 
+  const unread = chat.unreadCount ?? 0;
+
   return (
     <li>
       <button
         onClick={onSelect}
         className={cn(
-          "flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-hover",
+          "flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-hover sm:px-4",
           active && "bg-elevated",
         )}
       >
@@ -44,8 +48,8 @@ export function ChatListItem({ chat, meId, now, active, onSelect }: ChatListItem
           src={other?.avatarUrl}
           isOnline={chat.isGroup ? undefined : isOnline}
         />
-        <div className="min-w-0">
-          <p className="truncate font-medium">{title}</p>
+        <div className="min-w-0 flex-1">
+          <p className={cn("truncate", unread > 0 ? "font-semibold" : "font-medium")}>{title}</p>
           <p
             className={cn(
               "truncate text-xs",
@@ -55,6 +59,14 @@ export function ChatListItem({ chat, meId, now, active, onSelect }: ChatListItem
             {subtitle}
           </p>
         </div>
+        {unread > 0 && (
+          <span
+            className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-white"
+            aria-label={`Непрочитанных: ${unread}`}
+          >
+            {unread > 99 ? "99+" : unread}
+          </span>
+        )}
       </button>
     </li>
   );

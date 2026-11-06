@@ -8,8 +8,13 @@ import {
 } from "react";
 import { ApiError } from "@/shared/api";
 import { sendMessage, sendImageMessage, uploadImage } from "@/features/send-message";
+import type { Message } from "@web-messager/shared";
 
-export function useChatComposer(activeChatId: string | null) {
+export function useChatComposer(
+  activeChatId: string | null,
+  replyTo: Message | null = null,
+  onSent?: () => void,
+) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -72,9 +77,10 @@ export function useChatComposer(activeChatId: string | null) {
       setError(null);
       try {
         const uploaded = await uploadImage(image);
-        sendImageMessage(activeChatId!, uploaded, trimmed);
+        sendImageMessage(activeChatId!, uploaded, trimmed, { replyTo });
         setText("");
         resetImage();
+        onSent?.();
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Не удалось загрузить изображение");
       } finally {
@@ -83,8 +89,9 @@ export function useChatComposer(activeChatId: string | null) {
       return;
     }
 
-    sendMessage(activeChatId!, trimmed);
+    sendMessage(activeChatId!, trimmed, { replyTo });
     setText("");
+    onSent?.();
   }
 
   return {

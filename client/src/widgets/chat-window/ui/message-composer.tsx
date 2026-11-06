@@ -1,10 +1,27 @@
 "use client";
 
 import { Button, Input } from "@/shared/ui";
-import { MESSAGE_MAX_LENGTH } from "@web-messager/shared";
+import { MESSAGE_MAX_LENGTH, type Message } from "@web-messager/shared";
 import type { ChatComposer } from "../model/use-chat-composer";
 
-export function MessageComposer({ composer }: { composer: ChatComposer }) {
+interface MessageComposerProps {
+  composer: ChatComposer;
+  replyTo?: Message | null;
+  replySenderName?: string;
+  onCancelReply?: () => void;
+}
+
+function replyPreviewText(message: Message) {
+  if (message.deletedAt) return "Сообщение удалено";
+  return message.text || (message.imageUrl ? "Изображение" : "Сообщение");
+}
+
+export function MessageComposer({
+  composer,
+  replyTo,
+  replySenderName,
+  onCancelReply,
+}: MessageComposerProps) {
   const {
     text,
     setText,
@@ -21,6 +38,26 @@ export function MessageComposer({ composer }: { composer: ChatComposer }) {
 
   return (
     <form onSubmit={handleSubmit} onPaste={handlePaste} className="border-t border-line bg-surface">
+      {replyTo && (
+        <div className="flex items-center gap-3 border-b border-line px-3 py-2">
+          <div className="min-w-0 flex-1 border-l-2 border-primary pl-2">
+            <p className="truncate text-xs font-medium text-primary">
+              {replySenderName ?? "Ответ"}
+            </p>
+            <p className="truncate text-xs text-muted">{replyPreviewText(replyTo)}</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancelReply}
+            aria-label="Отменить ответ"
+          >
+            ×
+          </Button>
+        </div>
+      )}
+
       {preview && (
         <div className="flex items-center gap-3 border-b border-line p-3">
           <img src={preview} alt="Превью" className="h-16 w-16 rounded-lg object-cover" />
@@ -45,7 +82,7 @@ export function MessageComposer({ composer }: { composer: ChatComposer }) {
         </span>
       )}
 
-      <div className="flex gap-2 p-3">
+      <div className="flex gap-2 p-2 sm:p-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -56,6 +93,7 @@ export function MessageComposer({ composer }: { composer: ChatComposer }) {
         <Button
           type="button"
           variant="secondary"
+          className="shrink-0"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
         >
@@ -67,9 +105,10 @@ export function MessageComposer({ composer }: { composer: ChatComposer }) {
           maxLength={MESSAGE_MAX_LENGTH}
           onChange={(e) => setText(e.target.value)}
           disabled={uploading}
+          className="min-w-0 flex-1"
         />
 
-        <Button type="submit" disabled={uploading || (!text.trim() && !image)}>
+        <Button type="submit" className="shrink-0" disabled={uploading || (!text.trim() && !image)}>
           {uploading ? "…" : "Отправить"}
         </Button>
       </div>

@@ -21,6 +21,7 @@ const prismaMock = vi.hoisted(() => ({
 vi.mock("../db/prisma.js", () => ({ prisma: prismaMock }));
 vi.mock("../config/env.js", () => ({ config: { jwtSecret: "test-secret" } }));
 
+import { messageInclude } from "../services/message.service.js";
 import { messagesRouter } from "./messages.js";
 
 function message(id: string, minutes: number) {
@@ -72,6 +73,7 @@ describe("GET /api/messages/:chatId/messages", () => {
       where: { chatId: "chat-1" },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 3,
+      include: messageInclude,
     });
   });
 
@@ -103,6 +105,35 @@ describe("GET /api/messages/:chatId/messages", () => {
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: MESSAGE_PAGE_SIZE + 1,
+      include: messageInclude,
+    });
+  });
+
+  it("loads messages newer than a cursor for reconnect resync", async () => {
+    prismaMock.message.findFirst.mockResolvedValue({
+      id: middle.id,
+      createdAt: middle.createdAt,
+    });
+    prismaMock.message.findMany.mockResolvedValue([newest]);
+
+    const response = await request(createApp())
+      .get("/api/messages/chat-1/messages?after=m2")
+      .set("Authorization", auth());
+
+    expect(response.status).toBe(200);
+    expect(response.body.messages.map((item: { id: string }) => item.id)).toEqual(["m3"]);
+    expect(response.body.nextCursor).toBeNull();
+    expect(prismaMock.message.findMany).toHaveBeenCalledWith({
+      where: {
+        chatId: "chat-1",
+        OR: [
+          { createdAt: { gt: middle.createdAt } },
+          { createdAt: middle.createdAt, id: { gt: middle.id } },
+        ],
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: MESSAGE_PAGE_SIZE + 1,
+      include: messageInclude,
     });
   });
 

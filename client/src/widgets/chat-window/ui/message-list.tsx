@@ -18,6 +18,23 @@ interface MessageListProps {
   onDragLeave: () => void;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onScrollToBottom: () => void;
+  onReply?: (message: Message) => void;
+  onEdit?: (message: Message, text: string) => void;
+  onDelete?: (message: Message) => void;
+  onReact?: (message: Message, emoji: string) => void;
+  onRetry?: (message: Message) => void;
+}
+
+function isReadByOthers(chat: Chat, meId: string | undefined, message: Message) {
+  if (!meId || chat.isGroup) return false;
+
+  const others = chat.members.filter((member) => member.id !== meId);
+  if (others.length === 0) return false;
+
+  const createdAt = new Date(message.createdAt).getTime();
+  return others.every(
+    (member) => member.lastReadAt != null && new Date(member.lastReadAt).getTime() >= createdAt,
+  );
 }
 
 export function MessageList({
@@ -33,6 +50,11 @@ export function MessageList({
   onDragLeave,
   onDrop,
   onScrollToBottom,
+  onReply,
+  onEdit,
+  onDelete,
+  onReact,
+  onRetry,
 }: MessageListProps) {
   return (
     <div className="relative min-h-0 flex-1">
@@ -43,7 +65,7 @@ export function MessageList({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          "h-full space-y-2 overflow-y-auto overscroll-contain p-4 transition-colors",
+          "h-full space-y-2 overflow-y-auto overscroll-contain p-3 transition-colors sm:p-4",
           dragOver && "bg-primary/5 outline-dashed outline-2 outline-primary",
         )}
       >
@@ -56,6 +78,9 @@ export function MessageList({
           const sender = chat.isGroup
             ? chat.members.find((member) => member.id === m.senderId)
             : undefined;
+          const replySender = m.replyTo
+            ? chat.members.find((member) => member.id === m.replyTo?.senderId)?.displayName
+            : undefined;
 
           return (
             <MessageItem
@@ -63,6 +88,14 @@ export function MessageList({
               message={m}
               isMine={m.senderId === meId}
               senderName={sender?.displayName}
+              replySenderName={replySender}
+              isRead={m.senderId === meId && isReadByOthers(chat, meId, m)}
+              currentUserId={meId}
+              onReply={onReply}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onReact={onReact}
+              onRetry={onRetry}
             />
           );
         })}

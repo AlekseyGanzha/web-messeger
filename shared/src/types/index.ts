@@ -7,6 +7,13 @@ export interface User {
   lastSeenAt: string | null;
 }
 
+export type ChatRole = "OWNER" | "MEMBER";
+
+export interface ChatMember extends User {
+  role?: ChatRole;
+  lastReadAt?: string | null;
+}
+
 export interface MessagePreview {
   id: string;
   chatId: string;
@@ -16,6 +23,8 @@ export interface MessagePreview {
   imageMime: string | null;
   imageSize: number | null;
   createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface Chat {
@@ -24,9 +33,25 @@ export interface Chat {
   isGroup: boolean;
   ownerId?: string | null;
   updatedAt: string;
-  members: User[];
+  members: ChatMember[];
   lastMessage?: MessagePreview;
+  unreadCount?: number;
 }
+
+export interface MessageReplyPreview {
+  id: string;
+  senderId: string;
+  text: string;
+  imageUrl: string | null;
+  deletedAt: string | null;
+}
+
+export interface MessageReaction {
+  emoji: string;
+  userId: string;
+}
+
+export type MessageStatus = "sending" | "sent" | "failed";
 
 export interface Message {
   id: string;
@@ -37,6 +62,12 @@ export interface Message {
   imageMime: string | null;
   imageSize: number | null;
   createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  replyTo?: MessageReplyPreview | null;
+  reactions?: MessageReaction[];
+  clientId?: string | null;
+  status?: MessageStatus;
 }
 
 export interface MessagesPage {
@@ -77,16 +108,27 @@ export interface PresenceUpdate {
   lastSeenAt: string | null;
 }
 
+export interface SendMessagePayload {
+  chatId: string;
+  text: string;
+  imageUrl?: string | null;
+  imageMime?: string | null;
+  imageSize?: number | null;
+  replyToId?: string | null;
+  clientId?: string | null;
+}
+
+export interface MessageSendResult {
+  ok: boolean;
+  message?: Message;
+  error?: string;
+}
+
 export type ClientToServerEvents = {
-  "message:send": (payload: {
-    chatId: string;
-    text: string;
-    imageUrl?: string | null;
-    imageMime?: string | null;
-    imageSize?: number | null;
-  }) => void;
+  "message:send": (payload: SendMessagePayload, ack?: (result: MessageSendResult) => void) => void;
   "chat:join": (chatId: string) => void;
   "chat:leave": (chatId: string) => void;
+  "chat:read": (chatId: string) => void;
   "typing:start": (chatId: string) => void;
   "typing:stop": (chatId: string) => void;
 };
@@ -95,9 +137,11 @@ export type ChatRemovedReason = "deleted" | "removed" | "left";
 
 export type ServerToClientEvents = {
   "message:new": (message: Message) => void;
+  "message:updated": (message: Message) => void;
   "chat:new": (chat: Chat) => void;
   "chat:updated": (chat: Chat) => void;
   "chat:removed": (payload: { chatId: string; reason: ChatRemovedReason }) => void;
+  "chat:read": (payload: { chatId: string; userId: string; lastReadAt: string }) => void;
   "typing:update": (payload: { chatId: string; userId: string; isTyping: boolean }) => void;
   "presence:update": (payload: PresenceUpdate) => void;
   "presence:snapshot": (payload: PresenceUpdate[]) => void;

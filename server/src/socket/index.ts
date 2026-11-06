@@ -2,7 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { config } from "../config/env.js";
 import { prisma } from "../db/prisma.js";
-import { createMessage } from "../services/message.service.js";
+import { createMessage, isValidReplyTarget } from "../services/message.service.js";
 import { isUploadedImageUrl } from "../services/upload.service.js";
 import {
   addUserSocket,
@@ -14,6 +14,7 @@ import {
 import {
   MESSAGE_MAX_LENGTH,
   type ClientToServerEvents,
+  type MessageSendResult,
   type ServerToClientEvents,
 } from "@web-messager/shared";
 
@@ -96,19 +97,28 @@ export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvent
       socket.leave(chatId);
     });
 
-    socket.on("message:send", async (payload) => {
+    socket.on("message:send", async (payload, ack) => {
+      const respond = (result: MessageSendResult) => ack?.(result);
+
       try {
-        const { chatId, text, imageUrl, imageMime, imageSize } = payload;
-        if (typeof chatId !== "string" || typeof text !== "string") return;
+        const { chatId, text, imageUrl, imageMime, imageSize, replyToId, clientId } = payload;
+        if (typeof chatId !== "string" || typeof text !== "string") {
+          respond({ ok: false, error: "Invalid payload" });
+          return;
+        }
 
         const member = await prisma.chatMember.findFirst({
           where: { chatId, userId: data.userId },
         });
-        if (!member) return;
+        if (!member) {
+          respond({ ok: false, error: "Not a member" });
+          return;
+        }
 
         const trimmed = text.trim();
 
         if (trimmed.length > MESSAGE_MAX_LENGTH) {
+          respond({ ok: false, error: "Message too long" });
           return;
         }
 
@@ -116,13 +126,64 @@ export function setupSocket(io: Server<ClientToServerEvents, ServerToClientEvent
           ? { url: imageUrl, mime: imageMime ?? null, size: imageSize ?? null }
           : null;
 
-        if (!trimmed && !image) return;
+        if (!trimmed && !image) {
+          respond({ ok: false, error: "Empty message" });
+          return;
+        }
 
-        const message = await createMessage(chatId, data.userId, trimmed, image);
+        const replyTarget =
+          typeof replyToId === "string" && (await isValidReplyTarget(chatId, replyToId))
+            ? replyToId
+            : null;
+
+        if (replyToId && !replyTarget) {
+          respond({ ok: false, error: "Invalid reply target" });
+          return;
+        }
+
+        const safeClientId =
+          typeof clientId === "string" && clientId.length > 0 && clientId.length <= 64
+            ? clientId
+            : null;
+
+        const message = await createMessage(chatId, data.userId, trimmed, image, {
+          replyToId: replyTarget,
+          clientId: safeClientId,
+        });
 
         io.to(chatId).emit("message:new", message);
+        respond({ ok: true, message });
       } catch (error) {
         console.error("message:send failed:", error);
+        respond({ ok: false, error: "Failed to send message" });
+      }
+    });
+
+    socket.on("chat:read", async (chatId) => {
+      if (typeof chatId !== "string") return;
+
+      try {
+        const member = await prisma.chatMember.findUnique({
+          where: { chatId_userId: { chatId, userId: data.userId } },
+          select: { id: true },
+        });
+
+        if (!member) return;
+
+        const lastReadAt = new Date();
+
+        await prisma.chatMember.update({
+          where: { chatId_userId: { chatId, userId: data.userId } },
+          data: { lastReadAt },
+        });
+
+        io.to(chatId).emit("chat:read", {
+          chatId,
+          userId: data.userId,
+          lastReadAt: lastReadAt.toISOString(),
+        });
+      } catch (error) {
+        console.error("chat:read failed:", error);
       }
     });
 

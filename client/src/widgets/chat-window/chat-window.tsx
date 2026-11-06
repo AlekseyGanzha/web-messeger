@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import { useChatStore } from "@/entities/chat";
 import { useMessageStore } from "@/entities/message";
 import { useUserStore } from "@/entities/user";
+import {
+  deleteMessage,
+  editMessage,
+  markChatRead,
+  retryMessage,
+  toggleReaction,
+} from "@/features/send-message";
 import { GroupSettingsDialog } from "@/widgets/group-settings";
 import { useChatComposer } from "./model/use-chat-composer";
 import { useChatHistory } from "./model/use-chat-history";
@@ -17,16 +24,21 @@ import type { Message } from "@web-messager/shared";
 const EMPTY_MESSAGES: Message[] = [];
 
 export function ChatWindow() {
-  const { chats, activeChatId } = useChatStore();
+  const { chats, activeChatId, setActiveChat } = useChatStore();
   const messages =
     useMessageStore((s) => (activeChatId ? s.byChat[activeChatId] : undefined)) ?? EMPTY_MESSAGES;
   const me = useUserStore((s) => s.me);
   const chat = chats.find((c) => c.id === activeChatId);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
 
-  useEffect(() => setSettingsOpen(false), [activeChatId]);
+  useEffect(() => {
+    setSettingsOpen(false);
+    setReplyTo(null);
+    if (activeChatId) markChatRead(activeChatId);
+  }, [activeChatId]);
 
-  const composer = useChatComposer(activeChatId);
+  const composer = useChatComposer(activeChatId, replyTo, () => setReplyTo(null));
   const scroll = useChatScroll(activeChatId, messages);
   const history = useChatHistory(activeChatId);
   const typingUserIds = useTypingIndicator(activeChatId, me?.id, composer.text);
@@ -40,9 +52,32 @@ export function ChatWindow() {
     }
   }
 
-  if (!chat || !activeChatId) {
-    return <div className="flex h-full items-center justify-center text-muted">Выберите чат</div>;
+  function handleEdit(message: Message, text: string) {
+    if (!activeChatId) return;
+    void editMessage(activeChatId, message.id, text);
   }
+
+  function handleDelete(message: Message) {
+    if (!activeChatId) return;
+    void deleteMessage(activeChatId, message.id);
+  }
+
+  function handleReact(message: Message, emoji: string) {
+    if (!activeChatId) return;
+    void toggleReaction(activeChatId, message.id, emoji);
+  }
+
+  if (!chat || !activeChatId) {
+    return (
+      <div className="hidden h-full items-center justify-center text-muted md:flex">
+        Выберите чат
+      </div>
+    );
+  }
+
+  const replySenderName = replyTo
+    ? chat.members.find((member) => member.id === replyTo.senderId)?.displayName
+    : undefined;
 
   return (
     <div className="flex h-full flex-col">
@@ -50,6 +85,7 @@ export function ChatWindow() {
         chat={chat}
         meId={me?.id}
         typingUserIds={typingUserIds}
+        onBack={() => setActiveChat(null)}
         onOpenSettings={chat.isGroup ? () => setSettingsOpen(true) : undefined}
       />
       <MessageList
@@ -65,8 +101,18 @@ export function ChatWindow() {
         onDragLeave={composer.handleDragLeave}
         onDrop={composer.handleDrop}
         onScrollToBottom={() => scroll.scrollToBottom("smooth")}
+        onReply={setReplyTo}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onReact={handleReact}
+        onRetry={retryMessage}
       />
-      <MessageComposer composer={composer} />
+      <MessageComposer
+        composer={composer}
+        replyTo={replyTo}
+        replySenderName={replySenderName}
+        onCancelReply={() => setReplyTo(null)}
+      />
       <GroupSettingsDialog
         open={settingsOpen}
         chat={chat}

@@ -18,8 +18,9 @@ model User {
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
 
-  chats    ChatMember[]
-  messages Message[]
+  chats     ChatMember[]
+  messages  Message[]
+  reactions MessageReaction[]
 }
 
 model Chat {
@@ -39,11 +40,12 @@ enum ChatRole {
 }
 
 model ChatMember {
-  id       String   @id @default(uuid())
-  chatId   String
-  userId   String
-  role     ChatRole @default(MEMBER)
-  joinedAt DateTime @default(now()) @db.Timestamptz(6)
+  id         String    @id @default(uuid())
+  chatId     String
+  userId     String
+  role       ChatRole  @default(MEMBER)
+  joinedAt   DateTime  @default(now()) @db.Timestamptz(6)
+  lastReadAt DateTime? @db.Timestamptz(6)
 
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -60,11 +62,33 @@ model Message {
   imageUrl  String?
   imageMime String?
   imageSize Int?
+  clientId  String?
+  replyToId String?
 
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  editedAt  DateTime? @db.Timestamptz(6)
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  chat      Chat              @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo   Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[]         @relation("MessageReplies")
+  reactions MessageReaction[]
+
+  @@unique([senderId, clientId])
+  @@index([chatId, createdAt])
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
   createdAt DateTime @default(now()) @db.Timestamptz(6)
 
-  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([chatId, createdAt])
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }

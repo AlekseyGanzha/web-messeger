@@ -11,12 +11,11 @@ export class ApiError extends Error {
   }
 }
 
-function expireSession() {
-  localStorage.removeItem(apiConfig.TOKEN_KEY);
+export function expireSession() {
+  if (typeof window === "undefined") return;
 
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
-  }
+  localStorage.removeItem(apiConfig.TOKEN_KEY);
+  window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {

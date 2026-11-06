@@ -11,10 +11,11 @@ interface ChatHeaderProps {
   chat: Chat;
   meId?: string;
   typingUserIds: string[];
+  onBack?: () => void;
   onOpenSettings?: () => void;
 }
 
-export function ChatHeader({ chat, meId, typingUserIds, onOpenSettings }: ChatHeaderProps) {
+export function ChatHeader({ chat, meId, typingUserIds, onBack, onOpenSettings }: ChatHeaderProps) {
   const other = chat.isGroup ? null : chat.members.find((member) => member.id !== meId);
   const presence = usePresenceStore((s) => (other ? s.byUserId[other.id] : undefined));
   const isOnline = presence?.isOnline ?? other?.isOnline ?? false;
@@ -37,7 +38,19 @@ export function ChatHeader({ chat, meId, typingUserIds, onOpenSettings }: ChatHe
         : `${typingNames[0]} и ещё ${typingNames.length - 1} печатают…`;
 
   return (
-    <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
+    <header className="flex items-center gap-3 border-b border-line bg-surface px-3 py-3 sm:px-4">
+      {onBack && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="shrink-0 md:hidden"
+          onClick={onBack}
+          aria-label="Назад к чатам"
+        >
+          ←
+        </Button>
+      )}
       {chat.isGroup ? (
         <Avatar name="#" />
       ) : (
