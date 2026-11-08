@@ -15,7 +15,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://web-messager-web.onrender.com
+        sync: false
 
   - type: web
     name: web-messager-web
@@ -28,6 +28,6 @@ services:
       - key: NODE_VERSION
         value: 20.19.0
       - key: NEXT_PUBLIC_API_URL
-        value: https://web-messager-api.onrender.com/api
+        sync: false
       - key: NEXT_PUBLIC_SOCKET_URL
-        value: https://web-messager-api.onrender.com
+        sync: false

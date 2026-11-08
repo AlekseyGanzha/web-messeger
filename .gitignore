@@ -10,5 +10,6 @@ server/uploads/
 *.tsbuildinfo
 .eslintcache
 coverage/
+.wrangler/
 .DS_Store
 DEPLOY.md

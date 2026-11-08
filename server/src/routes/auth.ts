@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -8,14 +9,20 @@ import { asyncHandler } from "../utils/http.js";
 
 const router = Router();
 
+const usernameSchema = z.string().trim().min(3).max(64);
+
 const loginSchema = z.object({
-  username: z.string().min(3),
+  username: usernameSchema,
   password: z.string().min(6),
 });
 
 const registerSchema = loginSchema.extend({
-  displayName: z.string().min(2),
+  displayName: z.string().trim().min(2).max(64),
 });
+
+function isUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
 
 function toAuthUser(user: {
   id: string;
@@ -44,7 +51,9 @@ router.post(
     }
 
     const { username, password } = parse.data;
-    const user = await prisma.user.findUnique({ where: { username } });
+    const user = await prisma.user.findFirst({
+      where: { username: { equals: username, mode: "insensitive" } },
+    });
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -73,21 +82,33 @@ router.post(
 
     const { username, password, displayName } = parse.data;
 
-    const exists = await prisma.user.findUnique({ where: { username } });
+    const exists = await prisma.user.findFirst({
+      where: { username: { equals: username, mode: "insensitive" } },
+      select: { id: true },
+    });
     if (exists) {
       return res.status(409).json({ message: "Username already taken" });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
-      data: { username, passwordHash, displayName },
-    });
 
-    const token = jwt.sign({ userId: user.id, username: user.username }, config.jwtSecret, {
-      expiresIn: "7d",
-    });
+    try {
+      const user = await prisma.user.create({
+        data: { username, passwordHash, displayName },
+      });
 
-    return res.json({ token, user: toAuthUser(user) });
+      const token = jwt.sign({ userId: user.id, username: user.username }, config.jwtSecret, {
+        expiresIn: "7d",
+      });
+
+      return res.json({ token, user: toAuthUser(user) });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        return res.status(409).json({ message: "Username already taken" });
+      }
+
+      throw error;
+    }
   }),
 );
 
