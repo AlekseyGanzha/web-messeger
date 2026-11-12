@@ -16,6 +16,9 @@
 
 </div>
 
+**Live demo:** [https://perceptively-aesthetic-tamandua.cloudpub.ru] — демо-стенд,
+доступен, пока запущен `npm run demo` на компьютере автора.
+
 ---
 
 ## О проекте
@@ -100,7 +103,8 @@ web-messager/
 │       ├── socket/             # Обработчики Socket.IO
 │       └── utils/              # asyncHandler и вспомогательное
 ├── shared/                     # Общие типы и контракты событий
-├── Dockerfile                  # Multi-stage сборка client и server
+├── Dockerfile                  # Multi-stage: client, server и demo (один порт)
+├── scripts/build-static.mjs    # Статическая сборка клиента для demo
 ├── docker-compose.yml          # PostgreSQL + server + client
 ├── .github/workflows/ci.yml    # CI: format, lint, typecheck, тесты, сборка
 ├── eslint.config.mjs
@@ -151,12 +155,12 @@ npm install
 
 Создайте `server/.env` на основе `server/.env.example`:
 
-| Переменная     | По умолчанию            | Назначение                      |
-| -------------- | ----------------------- | ------------------------------- |
-| `PORT`         | `3001`                  | Порт HTTP и Socket.IO           |
-| `JWT_SECRET`   | `dev_secret_change_me`  | Секрет подписи JWT              |
-| `DATABASE_URL` | —                       | Строка подключения к PostgreSQL |
-| `CORS_ORIGIN`  | `http://localhost:3000` | Разрешённый origin клиента      |
+| Переменная     | По умолчанию            | Назначение                                 |
+| -------------- | ----------------------- | ------------------------------------------ |
+| `PORT`         | `3001`                  | Порт HTTP и Socket.IO                      |
+| `JWT_SECRET`   | `dev_secret_change_me`  | Секрет подписи JWT                         |
+| `DATABASE_URL` | —                       | Строка подключения к PostgreSQL            |
+| `CORS_ORIGIN`  | `http://localhost:3000` | Разрешённые origin клиента (через запятую) |
 
 Клиентские переменные (необязательно) задаются в `client/.env.local`:
 
@@ -187,23 +191,50 @@ docker compose up --build
 их через переменные окружения `JWT_SECRET`, `CORS_ORIGIN`, `NEXT_PUBLIC_API_URL` и
 `NEXT_PUBLIC_SOCKET_URL`.
 
+### Демо-режим на одном порту
+
+Для показа проекта можно собрать клиент в статику и отдать его тем же Express-сервером, что и
+API, Socket.IO и изображения:
+
+```bash
+npm run demo
+```
+
+Открой `http://localhost:3001` — клиент, REST, WebSocket и загрузки работают с одного origin.
+Переменные `NEXT_PUBLIC_*` для такой сборки не нужны: клиент использует относительные URL.
+Серверу нужен только `server/.env` с `DATABASE_URL` и `JWT_SECRET`; миграции должны быть уже
+применены.
+
+Повторный запуск без пересборки — `npm run start:demo`.
+
+Для always-on хоста есть Docker-stage `demo` (слушает порт `7860`):
+
+```bash
+docker build --target demo -t web-messager-demo .
+docker run --rm -p 7860:7860 --env-file server/.env web-messager-demo
+```
+
 ## Скрипты
 
-| Команда                       | Действие                              |
-| ----------------------------- | ------------------------------------- |
-| `npm run dev`                 | Запуск клиента и сервера одновременно |
-| `npm run build`               | Сборка `shared` → `client` → `server` |
-| `npm test`                    | Unit-тесты клиента и сервера          |
-| `npm run test:watch`          | Тесты в watch-режиме                  |
-| `npm run typecheck`           | Проверка типов во всех воркспейсах    |
-| `npm run lint`                | ESLint по всему репозиторию           |
-| `npm run lint:fix`            | ESLint с автоисправлением             |
-| `npm run format`              | Форматирование Prettier               |
-| `npm run format:check`        | Проверка форматирования без изменений |
-| `npm run db:migrate`          | `prisma migrate dev`                  |
-| `npm run db:generate`         | `prisma generate`                     |
-| `npm run db:push`             | `prisma db push`                      |
-| `npm run db:studio -w server` | Prisma Studio                         |
+| Команда                       | Действие                                  |
+| ----------------------------- | ----------------------------------------- |
+| `npm run dev`                 | Запуск клиента и сервера одновременно     |
+| `npm run build`               | Сборка `shared` → `client` → `server`     |
+| `npm run demo`                | Сборка demo и запуск на `:3001`           |
+| `npm run start:demo`          | Запуск demo без пересборки                |
+| `npm run build:demo`          | Сборка `shared`, server и статики         |
+| `npm run build:static`        | Статическая сборка клиента в `client/out` |
+| `npm test`                    | Unit-тесты клиента и сервера              |
+| `npm run test:watch`          | Тесты в watch-режиме                      |
+| `npm run typecheck`           | Проверка типов во всех воркспейсах        |
+| `npm run lint`                | ESLint по всему репозиторию               |
+| `npm run lint:fix`            | ESLint с автоисправлением                 |
+| `npm run format`              | Форматирование Prettier                   |
+| `npm run format:check`        | Проверка форматирования без изменений     |
+| `npm run db:migrate`          | `prisma migrate dev`                      |
+| `npm run db:generate`         | `prisma generate`                         |
+| `npm run db:push`             | `prisma db push`                          |
+| `npm run db:studio -w server` | Prisma Studio                             |
 
 ## API
 

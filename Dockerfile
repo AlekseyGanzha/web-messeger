@@ -27,6 +27,15 @@ RUN npm run db:generate -w server \
   && npm run build -w server \
   && npm run build -w client
 
+FROM deps AS build-static
+COPY client ./client
+COPY server ./server
+COPY scripts ./scripts
+RUN npm run db:generate -w server \
+  && npm run build -w shared \
+  && npm run build -w server \
+  && npm run build:static
+
 FROM base AS server
 ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
@@ -49,3 +58,18 @@ COPY --from=build /app/client ./client
 WORKDIR /app/client
 EXPOSE 3000
 CMD ["npm", "run", "start"]
+
+FROM base AS demo
+ENV NODE_ENV=production
+ENV PORT=7860
+COPY --from=build-static /app/node_modules ./node_modules
+COPY --from=build-static /app/package.json ./package.json
+COPY --from=build-static /app/shared ./shared
+COPY --from=build-static /app/server ./server
+COPY --from=build-static /app/client/out ./client/out
+COPY server/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+WORKDIR /app/server
+EXPOSE 7860
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["node", "dist/index.js"]

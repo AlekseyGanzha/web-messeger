@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .next/
+client/out/
 build/
 uploads/
 server/uploads/
@@ -10,6 +11,4 @@ server/uploads/
 *.tsbuildinfo
 .eslintcache
 coverage/
-.wrangler/
 .DS_Store
-DEPLOY.md

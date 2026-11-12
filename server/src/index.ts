@@ -1,5 +1,8 @@
 import express from "express";
 import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import helmet from "helmet";
 import cors from "cors";
 import multer from "multer";
@@ -18,9 +21,11 @@ import { apiLimiter, authLimiter } from "./middlewares/rate-limit.js";
 const app = express();
 const server = http.createServer(app);
 
+app.set("trust proxy", 1);
+
 app.use(
   cors({
-    origin: config.corsOrigin,
+    origin: config.corsOrigins,
     credentials: true,
   }),
 );
@@ -40,6 +45,20 @@ app.use(
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: ["'self'", "ws:", "wss:"],
+        fontSrc: ["'self'", "data:"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: null,
+      },
+    },
   }),
 );
 
@@ -53,9 +72,29 @@ app.use("/api/chats", apiLimiter, chatsRouter);
 app.use("/api/messages", apiLimiter, messagesRouter);
 app.use("/api/uploads", apiLimiter, uploadsRouter);
 
+const clientDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../client/out");
+const clientIndex = path.join(clientDir, "index.html");
+
+if (fs.existsSync(clientIndex)) {
+  app.use(express.static(clientDir));
+
+  app.get("*", (req, res, next) => {
+    if (
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/socket.io") ||
+      req.path.startsWith("/uploads") ||
+      req.path === "/health"
+    ) {
+      return next();
+    }
+
+    return res.sendFile(clientIndex);
+  });
+}
+
 const io = new Server(server, {
   cors: {
-    origin: config.corsOrigin,
+    origin: config.corsOrigins,
     credentials: true,
   },
 });
